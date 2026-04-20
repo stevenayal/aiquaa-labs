@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Resultados de Hurl
+results/
+*.original.md
+
+# Environments con datos reales
+V_*_PROD.env
+V_*_STAGING.env
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp

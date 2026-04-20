@@ -1,0 +1,70 @@
+# Y_EXAMPLE_API_jmeter.yml
+# JMeter stress tests — Example API
+# Generado por skill jmeter · aiquaa.com
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  jmeterVersion: '5.6.3'
+  planFile: 'examples/P_EXAMPLE_API.jmx'
+  csvFile: 'examples/D_EXAMPLE_API.csv'
+  resultsDir: '$(Build.ArtifactStagingDirectory)/jmeter-results'
+  dashboardDir: '$(Build.ArtifactStagingDirectory)/jmeter-dashboard'
+  threads: 1000
+  loops: 30
+
+steps:
+
+  - script: |
+      echo "== Instalando Java =="
+      sudo apt-get install -y default-jdk
+      java -version
+
+      echo "== Descargando JMeter $(jmeterVersion) =="
+      wget -q https://downloads.apache.org/jmeter/binaries/apache-jmeter-$(jmeterVersion).tgz
+      tar xzf apache-jmeter-$(jmeterVersion).tgz
+      echo "##vso[task.prependpath]$(pwd)/apache-jmeter-$(jmeterVersion)/bin"
+    displayName: Instalar JMeter
+
+  - script: mkdir -p $(resultsDir) $(dashboardDir)
+    displayName: Crear directorios de resultados
+
+  - script: |
+      jmeter -n \
+        -t $(planFile) \
+        -l $(resultsDir)/R_EXAMPLE_API.jtl \
+        -e -o $(dashboardDir) \
+        -Jthreads=$(threads) \
+        -Jloops=$(loops) \
+        -JcsvFile=$(csvFile) \
+        -JresultsFile=$(resultsDir)/R_EXAMPLE_API.jtl
+    displayName: Ejecutar prueba de estres JMeter
+    continueOnError: true
+    env:
+      JMETER_baseUrl: $(baseUrl)
+      JMETER_token: $(token)
+
+  - script: |
+      pip install reportlab pandas --quiet
+      python reporter/jmeter_report.py \
+        --results $(resultsDir)/R_EXAMPLE_API.jtl \
+        --output $(resultsDir)/INFORME_PERF_EXAMPLE_API.pdf \
+        --api-name "Example API" \
+        --threads $(threads) \
+        --loops $(loops)
+    displayName: Generar informe PDF
+    condition: always()
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: jmeter-results
+    displayName: Subir artefactos

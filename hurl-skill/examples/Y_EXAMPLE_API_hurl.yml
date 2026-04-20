@@ -1,0 +1,56 @@
+# Y_EXAMPLE_API_hurl.yml
+# Hurl API tests — Example API
+# Generado por skill hurl · aiquaa.com
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  varFile: 'examples/V_EXAMPLE_API.env'
+  hurlFile: 'examples/H_EXAMPLE_API.hurl'
+  resultsDir: '$(Build.ArtifactStagingDirectory)/hurl-results'
+
+steps:
+
+  - script: |
+      echo "== Instalando Hurl =="
+      curl -LO https://github.com/Orange-OpenSource/hurl/releases/latest/download/hurl-x86_64-unknown-linux-gnu.tar.gz
+      tar xzf hurl-x86_64-unknown-linux-gnu.tar.gz
+      sudo mv hurl /usr/local/bin/hurl
+      hurl --version
+    displayName: Instalar Hurl
+
+  - script: mkdir -p $(resultsDir)
+    displayName: Crear directorio de resultados
+
+  - script: |
+      hurl --test \
+        --variables-file $(varFile) \
+        --report-junit $(resultsDir)/hurl-junit.xml \
+        $(hurlFile)
+    displayName: Ejecutar tests Hurl
+    continueOnError: true
+    env:
+      HURL_token: $(token)
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: '$(resultsDir)/hurl-junit.xml'
+      testRunTitle: 'Hurl — Example API'
+      failTaskOnFailedTests: true
+    displayName: Publicar resultados en Azure Test Plans
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: $(resultsDir)
+      artifactName: hurl-results
+    displayName: Subir artefactos
