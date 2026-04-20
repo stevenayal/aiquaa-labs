@@ -25,7 +25,7 @@ Casos de uso cubiertos por esta skill:
 - **E2E web** — flujos de usuario completos (login → navegar → acción → assert)
 - **API testing** — requests HTTP con assertions sobre response, sin necesidad de Newman/Hurl
 - **Visual testing** — comparación de capturas de pantalla (snapshot testing)
-- **Component testing** — tests de componentes React/Vue aislados (Playwright CT)
+- **Validaciones externas** — SMS OTP, emails, estados en BD consultados vía API interna
 
 ---
 
@@ -49,6 +49,7 @@ Identificar qué falta y preguntar — una pregunta a la vez, en orden de priori
 | Page Object existente | clase a usar o extender |
 | Spec OpenAPI / Swagger | endpoints para API tests sin navegador |
 | Credenciales de prueba mencionadas | usuario/contraseña para fixtures de auth |
+| URL de API interna de validación (SMS/BD) | endpoint para verificar notificaciones o estado |
 | "quiero probar mi app" sin más | casi nada — preguntar |
 
 ---
@@ -84,7 +85,7 @@ Si solo API → saltar a Prioridad 5.
 > Ejemplo:
 > - "El usuario entra a /login, ingresa usuario y contraseña, hace click en Iniciar sesión
 >   y debe ver el dashboard con su nombre en el header"
-> - "El usuario busca un producto, lo agrega al carrito y completa la compra"
+> - "El usuario se registra, recibe un SMS con un código OTP y lo ingresa para activar la cuenta"
 >
 > Si tenés el código fuente de la página, compartilo — extraigo los selectores reales.
 > Si no, voy a usar selectores por rol y texto (más estables que IDs o clases CSS).
@@ -121,7 +122,45 @@ Si solo API → saltar a Prioridad 5.
 >
 > Default si no especificás: **Chromium solamente**.
 
-#### Prioridad 7 — Patrón de organización
+#### Prioridad 7 — Validaciones externas: SMS / notificaciones / estado en BD (opcional)
+
+> ¿El flujo que vas a testear dispara alguna notificación o guarda datos en BD
+> que también necesitás validar dentro del test?
+>
+> Ejemplos comunes:
+> - SMS con código OTP (registro, login de dos factores, recuperación de contraseña)
+> - Email de confirmación o link de activación
+> - Estado de un registro en BD (ej: "el pedido quedó en estado CONFIRMADO")
+> - Push notification o mensaje interno del sistema
+>
+> Si sí → ¿tenés una **API interna** que consulta la BD o el gateway de notificaciones?
+>
+> Necesito saber:
+> 1. URL de la API de validación — ej: `https://api-interna.empresa.com/test/sms/latest`
+> 2. ¿Requiere autenticación? (Bearer token, API Key, ninguna)
+> 3. ¿Qué devuelve? — ej: `{ "code": "123456", "phone": "+595...", "createdAt": "..." }`
+> 4. ¿Qué campo del response necesitás validar? — ej: `$.code`, `$.status`, `$.message`
+> 5. Tiempo máximo de espera para que llegue la notificación — ej: 15 segundos
+>
+> Si no tenés API propia → ¿usás algún servicio de testing como:
+> - **Twilio Test Credentials** (sandbox para SMS sin costo)
+> - **AWS SNS Sandbox**
+> - **Mailhog / Mailosaur / Mailtrap** (para emails)
+> - **Mock API propia** que retorna datos de prueba
+>
+> Si no aplica o querés saltearlo → decime "no aplica" y pasamos a la siguiente.
+
+Guardar si el usuario confirma:
+- `notificationApiUrl` — URL de la API de validación
+- `notificationApiToken` — token (va como `process.env.NOTIFICATION_API_TOKEN`)
+- `notificationType` — `sms` | `email` | `push` | `db-state` | `otro`
+- `notificationResponseField` — JSONPath del campo a validar (ej: `$.code`, `$.status`)
+- `notificationTimeout` — ms de espera máxima (default: 15000)
+- `notificationIdentifier` — campo para identificar el registro correcto (ej: número de teléfono, email, ID de pedido)
+
+Con estos datos generar el helper `NotificationHelper.ts` y los steps de validación en el spec.
+
+#### Prioridad 8 — Patrón de organización
 
 > ¿Usamos Page Object Model (POM)?
 >
@@ -130,7 +169,7 @@ Si solo API → saltar a Prioridad 5.
 >
 > Default si no especificás: **Page Object Model**.
 
-#### Prioridad 8 — Configuración CI
+#### Prioridad 9 — Configuración CI
 
 > ¿El pipeline es solo Azure Pipelines o también GitHub Actions?
 >
@@ -140,7 +179,7 @@ Si solo API → saltar a Prioridad 5.
 >
 > Default si no especificás: **Azure Pipelines**.
 
-#### Prioridad 9 — Metadata del informe ejecutivo (opcional)
+#### Prioridad 10 — Metadata del informe ejecutivo (opcional)
 
 > Para el informe PDF ejecutivo, ¿tenés esta info? (todo opcional)
 >
@@ -158,20 +197,28 @@ Si solo API → saltar a Prioridad 5.
 
 ```
 CONTEXTO DETECTADO:
-  APP:          <nombre o descripción>
-  BASE URL:     <url completa>
-  TIPO:         <E2E web | API | Ambos | Visual>
-  FLUJO:        <descripción del flujo a automatizar>
-  AUTH:         <tipo o "ninguna">
-  BROWSERS:     <Chromium | Chromium + Firefox | Suite completa>
-  PATRÓN:       <Page Object Model | Tests directos>
-  CI:           <Azure Pipelines | GitHub Actions | Ambos>
-  AMBIENTE:     <QA | Staging | Producción | no especificado>
-  VERSIÓN APP:  <versión o "no proporcionada">
-  REPO:         <url o "no proporcionado">
-  AUTOR:        <nombre o "anónimo">
-  SALIDA:       T_<NOMBRE>.spec.ts [+ pages/<NOMBRE>Page.ts] + playwright.config.ts
-                + Y_<NOMBRE>_playwright.yml + INFORME_E2E_<NOMBRE>.pdf
+  APP:             <nombre o descripción>
+  BASE URL:        <url completa>
+  TIPO:            <E2E web | API | Ambos | Visual>
+  FLUJO:           <descripción del flujo a automatizar>
+  AUTH:            <tipo o "ninguna">
+  BROWSERS:        <Chromium | Chromium + Firefox | Suite completa>
+  NOTIFICACIONES:  <SMS | Email | Push | DB-state | no aplica>
+    API URL:       <url o "no aplica">
+    CAMPO:         <jsonpath del valor a validar o "no aplica">
+    TIMEOUT:       <ms o "15000 default">
+    IDENTIFICADOR: <campo para filtrar el registro correcto>
+  PATRÓN:          <Page Object Model | Tests directos>
+  CI:              <Azure Pipelines | GitHub Actions | Ambos>
+  AMBIENTE:        <QA | Staging | Producción | no especificado>
+  VERSIÓN APP:     <versión o "no proporcionada">
+  REPO:            <url o "no proporcionado">
+  AUTOR:           <nombre o "anónimo">
+  SALIDA:          T_<NOMBRE>.spec.ts [+ pages/<NOMBRE>Page.ts]
+                   [+ helpers/NotificationHelper.ts si hay validaciones externas]
+                   + playwright.config.ts
+                   + Y_<NOMBRE>_playwright.yml
+                   + INFORME_E2E_<NOMBRE>.pdf
 
 ¿Confirmás o corregís algo antes de que genere?
 ```
@@ -186,45 +233,419 @@ Esperar confirmación. Luego generar.
 - Usuario da URL sin describir flujo → preguntar Prioridad 2 y 3
 - Usuario describe flujo sin mencionar auth → preguntar Prioridad 4
 - Usuario pide API tests → preguntar Prioridad 5
+- Usuario menciona OTP / SMS / código / verificación / email de confirmación → activar Prioridad 7 aunque no haya sido preguntada aún
+- Usuario dice "verificar que llegó el SMS" sin URL de API → preguntar la API de validación antes de generar
+- Usuario dice "validar estado en la BD" → preguntar URL de API interna que expone ese estado
 - Usuario pide "arreglá el test roto" sin error → pedir output de `npx playwright test` o el mensaje exacto
 - Usuario dice "ya te dije todo" con contexto incompleto → listar exactamente qué falta, de a uno
-- Usuario da código fuente HTML/React → extraer selectores reales antes de generar specs
+- Usuario da código fuente HTML/React → activar protocolo de reconocimiento de componentes antes de generar specs
+
+---
+
+## Validaciones externas — patrones de código
+
+### NotificationHelper.ts — helper genérico
+
+```typescript
+import { APIRequestContext, expect } from '@playwright/test';
+
+export interface NotificationResult {
+  found: boolean;
+  value: string | null;
+  raw: Record<string, unknown>;
+}
+
+export class NotificationHelper {
+  private readonly request: APIRequestContext;
+  private readonly apiUrl: string;
+  private readonly apiToken: string;
+  private readonly timeoutMs: number;
+  private readonly pollIntervalMs: number;
+
+  constructor(request: APIRequestContext, options?: {
+    timeoutMs?: number;
+    pollIntervalMs?: number;
+  }) {
+    this.request      = request;
+    this.apiUrl       = process.env.NOTIFICATION_API_URL || '';
+    this.apiToken     = process.env.NOTIFICATION_API_TOKEN || '';
+    this.timeoutMs    = options?.timeoutMs    ?? 15000;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 2000;
+  }
+
+  // Espera con polling hasta que la API retorne el valor buscado
+  async waitForNotification(
+    identifier: string,   // nro de teléfono, email, ID de pedido
+    field: string,        // campo del JSON a extraer: "code", "status", etc.
+  ): Promise<NotificationResult> {
+    const deadline = Date.now() + this.timeoutMs;
+
+    while (Date.now() < deadline) {
+      try {
+        const response = await this.request.get(this.apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          params: { identifier },
+        });
+
+        if (response.ok()) {
+          const body = await response.json();
+          const value = this.extractField(body, field);
+          if (value !== null && value !== undefined && value !== '') {
+            return { found: true, value: String(value), raw: body };
+          }
+        }
+      } catch {
+        // reintentar
+      }
+
+      await new Promise(resolve => setTimeout(resolve, this.pollIntervalMs));
+    }
+
+    return { found: false, value: null, raw: {} };
+  }
+
+  private extractField(obj: Record<string, unknown>, field: string): unknown {
+    // Soporte para dot notation: "data.code", "result.status"
+    return field.split('.').reduce((acc: unknown, key) => {
+      if (acc && typeof acc === 'object') {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
+  }
+}
+```
+
+### Caso de uso 1 — SMS OTP: registro con verificación de código
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { NotificationHelper } from './helpers/NotificationHelper';
+
+test.describe('Registro — verificación SMS OTP', () => {
+
+  test('usuario se registra y verifica cuenta con código SMS', async ({ page, request }) => {
+    const phone = process.env.TEST_PHONE || '+595981000001';
+    const notifications = new NotificationHelper(request, { timeoutMs: 20000 });
+
+    // 1. Completar el formulario de registro
+    await page.goto('/registro');
+    await page.getByLabel('Nombre').fill('Juan Test');
+    await page.getByLabel('Teléfono').fill(phone);
+    await page.getByLabel('Contraseña').fill('TestPass123!');
+    await page.getByRole('button', { name: 'Registrarse' }).click();
+
+    // 2. Esperar pantalla de verificación
+    await expect(page.getByText(/ingresá el código/i)).toBeVisible();
+
+    // 3. Consultar API interna para obtener el OTP enviado
+    const result = await notifications.waitForNotification(phone, 'code');
+    expect(result.found, 'El SMS OTP no llegó en el tiempo esperado').toBe(true);
+    expect(result.value).toMatch(/^\d{4,8}$/);
+
+    // 4. Ingresar el código en la app
+    await page.getByLabel(/código/i).fill(result.value!);
+    await page.getByRole('button', { name: /verificar|confirmar/i }).click();
+
+    // 5. Verificar activación exitosa
+    await expect(page).toHaveURL(/dashboard|bienvenido/);
+    await expect(page.getByText(/cuenta activada|verificada/i)).toBeVisible();
+  });
+
+});
+```
+
+### Caso de uso 2 — Email de confirmación
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { NotificationHelper } from './helpers/NotificationHelper';
+
+test.describe('Recuperación de contraseña — email', () => {
+
+  test('link de reseteo llega al email del usuario', async ({ page, request }) => {
+    const email = process.env.TEST_EMAIL || 'test@empresa.com';
+    const notifications = new NotificationHelper(request, { timeoutMs: 30000 });
+
+    // 1. Solicitar reseteo
+    await page.goto('/recuperar-contrasena');
+    await page.getByLabel('Email').fill(email);
+    await page.getByRole('button', { name: /enviar|recuperar/i }).click();
+    await expect(page.getByText(/revisá tu correo/i)).toBeVisible();
+
+    // 2. Consultar API de email (Mailosaur, MailHog, API interna)
+    const result = await notifications.waitForNotification(email, 'resetLink');
+    expect(result.found, 'El email de recuperación no llegó').toBe(true);
+    expect(result.value).toContain('/reset-password/');
+
+    // 3. Navegar al link recibido
+    await page.goto(result.value!);
+    await expect(page.getByRole('heading', { name: /nueva contraseña/i })).toBeVisible();
+
+    // 4. Completar el reseteo
+    await page.getByLabel(/nueva contraseña/i).fill('NuevaPass456!');
+    await page.getByLabel(/confirmar/i).fill('NuevaPass456!');
+    await page.getByRole('button', { name: /guardar|confirmar/i }).click();
+    await expect(page).toHaveURL(/login/);
+  });
+
+});
+```
+
+### Caso de uso 3 — Estado en base de datos
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { NotificationHelper } from './helpers/NotificationHelper';
+
+test.describe('Pedido — validación de estado en BD', () => {
+
+  test('pedido queda CONFIRMADO en BD después de completar checkout', async ({ page, request }) => {
+    const notifications = new NotificationHelper(request, {
+      timeoutMs: 10000,
+      pollIntervalMs: 1000,
+    });
+
+    // 1. Completar el flujo de compra
+    await page.goto('/carrito');
+    await page.getByRole('button', { name: 'Confirmar pedido' }).click();
+    await expect(page.getByText(/pedido confirmado/i)).toBeVisible();
+
+    // 2. Obtener el ID del pedido desde la UI o URL
+    const orderId = page.url().match(/orders\/([a-z0-9-]+)/)?.[1];
+    expect(orderId, 'No se encontró ID de pedido en la URL').toBeTruthy();
+
+    // 3. Validar estado en BD via API interna
+    const result = await notifications.waitForNotification(orderId!, 'status');
+    expect(result.found, 'El pedido no aparece en la BD').toBe(true);
+    expect(result.value).toBe('CONFIRMADO');
+  });
+
+});
+```
+
+### Variables de entorno para validaciones externas
+
+```bash
+# En .env.test (gitignored) o Azure Pipeline secrets
+NOTIFICATION_API_URL=https://api-interna.empresa.com/test/notifications/latest
+NOTIFICATION_API_TOKEN=tu-token-interno
+
+# Para SMS
+TEST_PHONE=+595981000001
+
+# Para email
+TEST_EMAIL=test@empresa.com
+
+# Para BD state
+TEST_ORDER_ID=  # se obtiene dinámicamente del test
+```
+
+En Azure Pipelines, agregar al step de ejecución:
+```yaml
+env:
+  NOTIFICATION_API_URL:   $(notificationApiUrl)
+  NOTIFICATION_API_TOKEN: $(notificationApiToken)
+  TEST_PHONE:             $(testPhone)
+  TEST_EMAIL:             $(testEmail)
+```
+
+---
+
+## Reconocimiento de componentes web — protocolo anti-falla
+
+**El 80% de los tests que fallan en CI usan selectores inventados.** Esta sección define
+el protocolo obligatorio para reconocer componentes reales antes de generar cualquier locator.
+
+### Regla de oro
+
+**NUNCA generar un selector sin haberlo inferido de una fuente real.**
+Si no hay código fuente ni HTML disponible → usar selectores semánticos genéricos
+y declarar explícitamente que son estimados y pueden necesitar ajuste.
+
+---
+
+### Paso 1 — Solicitar el código fuente del componente
+
+Antes de generar specs E2E, pedir siempre:
+
+> Para generar selectores que no fallen, necesito ver el componente real.
+> Podés compartir cualquiera de estos:
+>
+> - El HTML renderizado (F12 → Inspector → copiar el elemento)
+> - El componente React/Vue/Angular (archivo `.tsx`, `.vue`, `.component.ts`)
+> - La URL pública de la app (la inspecciono con `page.content()`)
+>
+> Sin esto uso selectores por rol estimados — funcionan en el 70% de los casos
+> pero pueden fallar si la app usa labels no estándar o componentes de UI library.
+
+---
+
+### Paso 2 — Analizar el código fuente recibido
+
+Buscar en orden de prioridad:
+
+```
+1. data-testid="..."          → getByTestId('...')        ← MÁS ESTABLE
+2. aria-label="..."           → getByLabel('...')
+3. role="..." + texto visible → getByRole('...', { name })
+4. placeholder="..."          → getByPlaceholder('...')
+5. id="..."                   → locator('#id')            ← SOLO SI NO HAY NADA MEJOR
+6. class="..."                → locator('.clase')         ← ÚLTIMO RECURSO
+```
+
+**NUNCA usar:** selectores de posición (`nth-child`, `nth-of-type`), XPath absolutos.
+
+#### Componentes de UI libraries reconocidas
+
+**Material UI (MUI):**
+```typescript
+page.getByLabel('Email')
+page.getByRole('button', { name: 'Guardar' })
+page.getByRole('combobox', { name: 'País' })
+page.getByRole('dialog').getByRole('button', { name: 'Confirmar' })
+```
+
+**Ant Design:**
+```typescript
+page.locator('.ant-input[placeholder="Ingresá tu email"]')
+page.locator('.ant-select-selector').filter({ hasText: 'Seleccioná' })
+page.locator('.ant-modal').getByRole('button', { name: 'Aceptar' })
+page.locator('.ant-table-row').filter({ hasText: 'Juan Pérez' })
+```
+
+**PrimeNG / PrimeReact:**
+```typescript
+page.locator('input.p-inputtext[placeholder="..."]')
+page.locator('.p-dropdown').filter({ hasText: 'Seleccioná' }).click()
+page.locator('.p-dropdown-item').filter({ hasText: 'Opción' }).click()
+page.locator('.p-datatable-row').filter({ hasText: 'texto' })
+```
+
+**Angular Material:**
+```typescript
+page.getByLabel('Nombre')
+page.locator('mat-select[formcontrolname="pais"]').click()
+page.locator('mat-option').filter({ hasText: 'Paraguay' }).click()
+page.locator('mat-dialog-container').getByRole('button', { name: 'Confirmar' })
+```
+
+**Bootstrap:**
+```typescript
+page.getByLabel('Email')
+page.locator('button.btn-primary').filter({ hasText: 'Enviar' })
+page.locator('.modal.show').getByRole('button', { name: 'Aceptar' })
+```
+
+---
+
+### Paso 3 — Protocolo cuando NO hay código fuente
+
+**Nivel 1 — Selectores semánticos:**
+```typescript
+page.getByRole('button', { name: /guardar|save|enviar|submit/i })
+page.getByRole('textbox', { name: /email|correo/i })
+page.getByRole('textbox', { name: /contraseña|password/i })
+```
+
+**Advertencia obligatoria:**
+```
+⚠️  SELECTORES ESTIMADOS — sin código fuente disponible.
+    Si algún test falla con "element not found":
+    → Compartí el HTML del componente, o
+    → Corré: npx playwright codegen <URL>
+```
+
+---
+
+### Paso 4 — Recomendar data-testid cuando el selector es frágil
+
+```
+💡 RECOMENDACIÓN: agregar data-testid al elemento en el código fuente.
+   <button data-testid="btn-verificar-otp">Verificar</button>
+   → page.getByTestId('btn-verificar-otp').click()
+   Convención: kebab-case, descriptivo.
+```
+
+---
+
+### Paso 5 — Waiters por tipo de componente
+
+```typescript
+// Elemento visible antes de interactuar
+await expect(locator).toBeVisible()
+
+// Esperar red después de acción
+await Promise.all([
+  page.waitForResponse(r => r.url().includes('/api/pedidos') && r.status() === 200),
+  page.getByRole('button', { name: 'Confirmar' }).click(),
+])
+
+// Dropdown asincrónico
+await page.getByRole('combobox', { name: 'País' }).click()
+await expect(page.getByRole('option', { name: 'Paraguay' })).toBeVisible()
+await page.getByRole('option', { name: 'Paraguay' }).click()
+
+// Modal con animación
+await expect(page.getByRole('dialog')).toBeVisible()
+await page.getByRole('button', { name: 'Confirmar' }).click()
+await expect(page.getByRole('dialog')).toBeHidden()
+
+// Tabla que carga datos
+await expect(page.locator('table tbody tr')).not.toHaveCount(0)
+
+// Spinner que desaparece
+await expect(page.locator('[data-testid="spinner"]')).toBeHidden()
+```
+
+---
+
+### Paso 6 — Inspección en vivo
+
+```bash
+# Debug paso a paso
+npx playwright test T_LOGIN.spec.ts --debug
+
+# UI visual interactivo
+npx playwright test --ui
+
+# Grabar flujo y generar código automáticamente
+npx playwright codegen https://app.miempresa.com
+```
 
 ---
 
 ## Convención de nombres de archivos
 
-**Siempre respetar este patrón. Sin excepciones.**
-
 | Tipo | Patrón | Ejemplo |
 |------|--------|---------|
 | Test spec | `T_NOMBRE_DE_FLUJO.spec.ts` | `T_LOGIN.spec.ts` |
 | Page Object | `pages/NombrePage.ts` | `pages/LoginPage.ts` |
+| Helper externo | `helpers/NombreHelper.ts` | `helpers/NotificationHelper.ts` |
 | Auth setup | `auth.setup.ts` | `auth.setup.ts` |
 | Config | `playwright.config.ts` | `playwright.config.ts` |
-| Fixtures | `fixtures/index.ts` | `fixtures/index.ts` |
 | Pipeline Azure | `Y_NOMBRE_playwright.yml` | `Y_PORTAL_playwright.yml` |
 | Informe PDF | `INFORME_E2E_NOMBRE.pdf` | `INFORME_E2E_PORTAL.pdf` |
 
 Estructura recomendada:
 ```
-tests/
-  playwright/
-    T_LOGIN.spec.ts
-    T_DASHBOARD.spec.ts
-    T_CHECKOUT.spec.ts
-    auth.setup.ts
-    pages/
-      LoginPage.ts
-      DashboardPage.ts
-    fixtures/
-      index.ts
+tests/playwright/
+  T_LOGIN.spec.ts
+  T_REGISTRO_OTP.spec.ts
+  T_CHECKOUT.spec.ts
+  auth.setup.ts
+  pages/
+    LoginPage.ts
+    RegistroPage.ts
+  helpers/
+    NotificationHelper.ts   ← SMS / email / BD state
 playwright.config.ts
-azure-pipelines/
-  Y_PORTAL_playwright.yml
 results/
-  playwright-report/      ← HTML report generado por Playwright
-  INFORME_E2E_PORTAL.pdf  ← informe PDF ejecutivo
+  playwright-report/
+  INFORME_E2E_PORTAL.pdf
 ```
 
 ---
@@ -236,8 +657,9 @@ results/
 - Browsers: Chromium, Firefox, WebKit
 - Reporters nativos: `html`, `json`, `junit`, `list`
 - Auth: `storageState` (sesión guardada, no login por test)
+- Validaciones externas: `NotificationHelper` con polling sobre API interna
 - CI: Azure Pipelines + GitHub Actions
-- PDF: reporter Python con ReportLab + pandas
+- PDF: reporter Python con ReportLab
 
 ---
 
@@ -247,11 +669,13 @@ results/
 |---------|--------|
 | `/playwright:generate` | Generar spec `.ts` desde flujo / URL / código fuente |
 | `/playwright:page` | Generar o actualizar Page Object |
+| `/playwright:helper` | Generar `NotificationHelper.ts` para SMS / email / BD |
 | `/playwright:fix` | Analizar y reparar test fallido |
 | `/playwright:ci` | Generar pipeline Azure Pipelines o GitHub Actions |
 | `/playwright:auth` | Generar setup de autenticación (`auth.setup.ts`) |
 | `/playwright:config` | Generar o actualizar `playwright.config.ts` |
 | `/playwright:report` | Analizar resultado JSON y describir el PDF ejecutivo |
+| `/playwright:inspect` | Mostrar comandos de inspección y codegen para la URL dada |
 
 ---
 
@@ -281,7 +705,6 @@ export default defineConfig({
     video: 'on-first-retry',
   },
   projects: [
-    // Setup de autenticación — corre antes que los tests
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
@@ -306,7 +729,7 @@ export default defineConfig({
 });
 ```
 
-### auth.setup.ts — login una vez, reutilizar en todos los tests
+### auth.setup.ts
 
 ```typescript
 import { test as setup, expect } from '@playwright/test';
@@ -342,13 +765,11 @@ export class LoginPage {
     this.page = page;
     this.usernameInput = page.getByRole('textbox', { name: /usuario|email/i });
     this.passwordInput = page.getByRole('textbox', { name: /contraseña|password/i });
-    this.submitButton = page.getByRole('button', { name: /iniciar sesión|login/i });
-    this.errorMessage = page.getByRole('alert');
+    this.submitButton  = page.getByRole('button',  { name: /iniciar sesión|login/i });
+    this.errorMessage  = page.getByRole('alert');
   }
 
-  async goto() {
-    await this.page.goto('/login');
-  }
+  async goto() { await this.page.goto('/login'); }
 
   async login(username: string, password: string) {
     await this.usernameInput.fill(username);
@@ -361,108 +782,6 @@ export class LoginPage {
     await this.page.waitForURL(/dashboard|home/);
   }
 }
-```
-
-### Test spec E2E — T_LOGIN.spec.ts
-
-```typescript
-import { test, expect } from '@playwright/test';
-import { LoginPage } from './pages/LoginPage';
-
-test.describe('Login — happy path y casos negativos', () => {
-
-  test('login exitoso redirige al dashboard', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.loginAndExpectDashboard(
-      process.env.TEST_USER || 'testuser@empresa.com',
-      process.env.TEST_PASSWORD || 'TestPass123'
-    );
-    await expect(page).toHaveURL(/dashboard/);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  });
-
-  test('credenciales inválidas muestran error', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.login('usuario@invalido.com', 'claveincorrecta');
-    await expect(loginPage.errorMessage).toBeVisible();
-    await expect(page).toHaveURL(/login/);
-  });
-
-  test('campos vacíos muestran validación', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.goto();
-    await loginPage.submitButton.click();
-    await expect(loginPage.errorMessage.or(
-      page.locator('[aria-invalid="true"]')
-    )).toBeVisible();
-  });
-
-});
-```
-
-### Test spec API — T_API_USERS.spec.ts
-
-```typescript
-import { test, expect } from '@playwright/test';
-
-test.describe('API — /api/users', () => {
-
-  test('GET /api/users retorna lista', async ({ request }) => {
-    const response = await request.get('/api/users', {
-      headers: {
-        'Authorization': `Bearer ${process.env.API_TOKEN}`,
-      },
-    });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBeTruthy();
-    expect(body.length).toBeGreaterThan(0);
-  });
-
-  test('POST /api/users crea usuario', async ({ request }) => {
-    const response = await request.post('/api/users', {
-      headers: { 'Authorization': `Bearer ${process.env.API_TOKEN}` },
-      data: { name: 'Test User', email: `test_${Date.now()}@ejemplo.com` },
-    });
-    expect(response.status()).toBe(201);
-    const body = await response.json();
-    expect(body).toHaveProperty('id');
-  });
-
-  test('GET /api/users/:id inexistente retorna 404', async ({ request }) => {
-    const response = await request.get('/api/users/id-inexistente', {
-      headers: { 'Authorization': `Bearer ${process.env.API_TOKEN}` },
-    });
-    expect(response.status()).toBe(404);
-  });
-
-});
-```
-
-### Selectores — orden de preferencia
-
-```typescript
-// 1. Por rol (más estable — accesible)
-page.getByRole('button', { name: 'Iniciar sesión' })
-page.getByRole('textbox', { name: 'Email' })
-page.getByRole('heading', { name: 'Dashboard' })
-
-// 2. Por texto visible
-page.getByText('Bienvenido')
-page.getByLabel('Contraseña')
-page.getByPlaceholder('Ingresá tu email')
-
-// 3. Por test-id (si el equipo los usa)
-page.getByTestId('login-button')
-
-// 4. Por CSS/XPath — ÚLTIMO RECURSO
-page.locator('.btn-primary')
-page.locator('#login-form')
-
-// NUNCA usar selectores frágiles sin contexto:
-// page.locator('div > div:nth-child(3) > button') ← NO
 ```
 
 ---
@@ -503,22 +822,24 @@ steps:
   - script: mkdir -p $(resultsDir)
     displayName: Crear directorio de resultados
 
-  - script: |
-      npx playwright test \
-        --reporter=list,json,junit,html
+  - script: npx playwright test --reporter=list,json,junit,html
     displayName: Ejecutar tests Playwright
     continueOnError: true
     env:
-      BASE_URL: $(baseUrl)
-      TEST_USER: $(testUser)
-      TEST_PASSWORD: $(testPassword)
-      API_TOKEN: $(apiToken)
-      CI: true
+      BASE_URL:               $(baseUrl)
+      TEST_USER:              $(testUser)
+      TEST_PASSWORD:          $(testPassword)
+      API_TOKEN:              $(apiToken)
+      NOTIFICATION_API_URL:   $(notificationApiUrl)
+      NOTIFICATION_API_TOKEN: $(notificationApiToken)
+      TEST_PHONE:             $(testPhone)
+      TEST_EMAIL:             $(testEmail)
+      CI:                     true
 
   - script: |
       cp results/playwright-results.json $(resultsDir)/ || true
-      cp results/playwright-junit.xml $(resultsDir)/ || true
-      cp -r results/playwright-report $(resultsDir)/ || true
+      cp results/playwright-junit.xml    $(resultsDir)/ || true
+      cp -r results/playwright-report    $(resultsDir)/ || true
     displayName: Copiar resultados
     condition: always()
 
@@ -529,14 +850,14 @@ steps:
       testResultsFiles: '$(resultsDir)/playwright-junit.xml'
       testRunTitle: 'Playwright E2E — NOMBRE APP'
       failTaskOnFailedTests: true
-    displayName: Publicar resultados en Azure Test Plans
+    displayName: Publicar en Azure Test Plans
 
   - script: |
-      pip install reportlab pandas --quiet
+      pip install reportlab --quiet
       python reporter/playwright_report.py \
-        --results $(resultsDir)/playwright-results.json \
-        --output $(resultsDir)/INFORME_E2E_NOMBRE.pdf \
-        --app-name "NOMBRE APP" \
+        --results     $(resultsDir)/playwright-results.json \
+        --output      $(resultsDir)/INFORME_E2E_NOMBRE.pdf \
+        --app-name    "NOMBRE APP" \
         --environment "QA"
     displayName: Generar informe PDF ejecutivo
     condition: always()
@@ -551,47 +872,26 @@ steps:
 
 ---
 
-## Formato de salida — análisis de resultados (`/playwright:report`)
-
-```
-FILE: playwright-results.json
-APP:  <nombre>
-ENV:  <ambiente>
-
-SUITES:
-  ✅ <suite> — <n> passed
-  ❌ <suite> — <n> passed / <n> failed
-  ⏭ <suite> — <n> skipped
-
-MÉTRICAS:
-  Total tests:   <n>
-  Passed:        <n> (<n>%)
-  Failed:        <n> (<n>%)
-  Skipped:       <n>
-  Duration:      <n>s
-
-FALLOS (si hay):
-  ❌ <test name>
-     ARCHIVO: <spec>:<línea>
-     ERROR:   <mensaje>
-     FIX:     <acción en una línea>
-
-VEREDICTO: ✅ SUITE VERDE | ⚠️ FALLOS MENORES | ❌ REGRESIÓN CRÍTICA
-```
-
 ## Formato de salida — autoría (`/playwright:generate`)
 
 ```
 SPEC: T_<NOMBRE>.spec.ts
 PAGE: pages/<NOMBRE>Page.ts (si POM)
+HELPER: helpers/NotificationHelper.ts (si hay validaciones externas)
+FUENTE SELECTORES: <código fuente | estimados | codegen>
 TESTS GENERADOS:
   ✅ <descripción del test>
-  ✅ <descripción del test>
-  ✅ <descripción del test>
+  ✅ <descripción del test — incluye validación SMS/BD si aplica>
 SELECTORES USADOS:
-  <lista de locators — rol/texto/testid>
-NOTAS:
-  <advertencias sobre selectores inferidos / auth / env vars>
+  <lista de locators con su origen>
+VALIDACIONES EXTERNAS:
+  TIPO:    <SMS | Email | DB-state | no aplica>
+  API:     <url de la API de validación>
+  CAMPO:   <jsonpath del valor validado>
+  TIMEOUT: <ms>
+ADVERTENCIAS:
+  ⚠️  <selectores estimados que pueden necesitar ajuste>
+  💡  <recomendaciones de data-testid si aplica>
 ```
 
 ---
@@ -600,29 +900,35 @@ NOTAS:
 
 | Síntoma | Causa | Fix |
 |---------|-------|-----|
-| `locator.click: element not found` | Selector incorrecto o elemento no visible | Usar `getByRole` en lugar de CSS; agregar `waitFor` |
-| `Timeout 30000ms exceeded` | Página no cargó o acción bloqueada | Aumentar `timeout` en config o revisar la URL base |
-| `storageState file not found` | Auth setup no corrió o path incorrecto | Verificar que el proyecto `setup` sea dependencia |
-| Tests pasan local, fallan en CI | Variables de entorno no seteadas en pipeline | Verificar `env:` en el step de ejecución |
-| `net::ERR_CONNECTION_REFUSED` | Servicio no levantado en CI | Agregar step de health check antes de los tests |
-| Capturas en blanco | Acción demasiado rápida antes de render | Agregar `await expect(locator).toBeVisible()` antes |
-| Tests lentos en CI | Demasiados workers o browsers | Reducir `workers` en `playwright.config.ts` para CI |
-| `page.goto` falla con 401 | Token o cookie expirado | Verificar `storageState` o regenerar auth |
-| Error en `json reporter` | Path de output no existe | Crear directorio `results/` antes de correr |
+| `locator.click: element not found` | Selector incorrecto o elemento no visible | Correr `npx playwright codegen <URL>` para obtener el selector real |
+| `locator resolved to hidden element` | Elemento existe pero no visible | Agregar `await expect(locator).toBeVisible()` antes del click |
+| `Timeout 30000ms exceeded` | Página no cargó o selector equivocado | Usar `--debug`; revisar si el selector existe en DOM |
+| `strict mode violation` | Selector matchea más de un elemento | Agregar `{ name: '...' }` o `.filter({ hasText: '...' })` |
+| `storageState file not found` | Auth setup no corrió | Verificar dependencia `setup` en `playwright.config.ts` |
+| SMS OTP: `found: false` | Timeout expirado sin respuesta | Aumentar `timeoutMs`; verificar que la API de validación funcione |
+| SMS OTP: código incorrecto | API retorna código viejo (no el último) | Agregar filtro por timestamp en la API interna |
+| BD state: `found: false` | La transacción tarda más de lo esperado | Aumentar `timeoutMs`; reducir `pollIntervalMs` |
+| Notificación API: 401 | `NOTIFICATION_API_TOKEN` no seteado en CI | Agregar secret en Pipeline > Variables y mapear en `env:` |
+| Tests pasan local, fallan en CI | Variables de entorno no seteadas | Verificar todo el bloque `env:` en el step de ejecución |
+| Dropdown no abre opciones | Library usa portal fuera del DOM | Esperar `await expect(page.getByRole('option')).toBeVisible()` |
+| Tests lentos en CI | Muchos workers o browsers | Reducir `workers`; usar solo Chromium en CI |
 
 ---
 
 ## Auto-Clarity
 
 Salir de caveman para: hallazgos de seguridad encontrados durante E2E (XSS, datos expuestos),
-regresiones críticas que bloquean el release, recomendaciones de arquitectura de tests.
+regresiones críticas que bloquean el release, recomendaciones de arquitectura de tests,
+explicaciones detalladas de cómo conectar la API de validación externa al helper.
 Retomar caveman después.
 
 ## Boundaries
 
-Escribe specs `.spec.ts`, Page Objects, `playwright.config.ts`, `auth.setup.ts`,
-fixtures, comandos CLI, pipelines Azure/GitHub.
+Escribe specs `.spec.ts`, Page Objects, `NotificationHelper.ts`, `playwright.config.ts`,
+`auth.setup.ts`, fixtures, comandos CLI, pipelines Azure/GitHub.
 NO ejecuta Playwright — da los comandos listos para ejecutar.
-NO inventa selectores sin ver el HTML — pregunta o usa roles genéricos con advertencia.
-NO inventa credenciales — las pone como variables de entorno.
+NO inventa selectores sin fuente — aplica el protocolo de reconocimiento y declara estimados.
+NO inventa credenciales ni URLs de API — las pone como variables de entorno.
+NO accede directamente a BD — siempre a través de la API interna del usuario.
+Ante selector frágil → recomendar `data-testid` y `npx playwright codegen`.
 "stop playwright" o "normal mode": volver a estilo verbose.
