@@ -1,14 +1,22 @@
 # jmeter-skill
 
-> Pruebas de rendimiento y estrés de APIs con Apache JMeter — powered by [aiquaa](https://aiquaa.com/)
+> Pruebas de rendimiento dinámicas con Apache JMeter — powered by [aiquaa](https://aiquaa.com/)
 
-Skill para Claude Code, Cursor, Windsurf y más de 40 agentes de IA. A partir de una URL o especificación, genera todo lo necesario para correr una prueba de estrés real: plan `.jmx`, datos CSV, pipeline CI e informe PDF con veredicto automático.
+Skill para Claude Code, Cursor, Windsurf y más de 40 agentes de IA. A partir de una URL,
+especificación o grupo del curso, genera **un solo plan `.jmx` property-driven** que cubre los
+5 tipos de prueba del temario [PtU Certified Performance Tester con JMeter (CPTJM)](https://www.pt-united.com/) —
+carga, estrés, pico, resistencia, escalabilidad — más línea base, sin editar XML entre corridas.
 
 ---
 
 ## ¿Qué problema resuelve?
 
-Configurar JMeter manualmente para un escenario de estrés real toma horas: definir thread groups, CSV data sets, extractores de token, assertions, listeners y pipelines CI. Esta skill lo genera en segundos a partir de una conversación — con los patrones correctos desde el inicio.
+Un plan de JMeter clavado a un solo escenario (ej. "1000 usuarios × 30 loops") sirve para una
+sola pregunta. Esta skill genera un plan **parametrizado por `-J`**: el mismo `.jmx` responde
+"¿cuál es el mejor tiempo posible?" (baseline), "¿aguanta la carga esperada?" (carga), "¿dónde
+rompe?" (estrés), "¿se recupera después de una ráfaga?" (pico), "¿hay fugas sostenidas?"
+(resistencia) y "¿cómo escala?" (escalabilidad) — con los mismos elementos de correlación,
+parametrización, temporizadores y aserciones que exige el temario PtU CPTJM.
 
 ---
 
@@ -16,11 +24,14 @@ Configurar JMeter manualmente para un escenario de estrés real toma horas: defi
 
 | Componente | Descripción |
 |------------|-------------|
-| `skills/jmeter/SKILL.md` | Instrucciones del agente — genera `.jmx`, CSV, pipelines y reportes |
-| `examples/P_EXAMPLE_API.jmx` | Plan de prueba completo: login, extracción de token, endpoint bajo estrés |
-| `examples/D_EXAMPLE_API.csv` | Archivo de datos de ejemplo (20 usuarios) |
-| `examples/Y_EXAMPLE_API_jmeter.yml` | Pipeline Azure Pipelines listo para usar |
-| `reporter/jmeter_report.py` | Generador de informe PDF con métricas, percentiles y veredicto |
+| `skills/jmeter/SKILL.md` | Instrucciones del agente — Context Intake, perfiles, correlación, parametrización, temporizadores, controladores, depuración |
+| `references/perfiles.md` | Los 5 perfiles de carga + baseline, con valores y comandos listos |
+| `references/ptu-cptjm.md` | Mapa LO1–LO23 del temario PtU CPTJM → sección de esta skill |
+| `examples/P_SANDBOX_API.jmx` | Plan property-driven completo contra el [sandbox del curso](../sandbox-skill) — correlación, CSV, Constant Throughput Timer, Transaction Controller |
+| `examples/D_SANDBOX_API.csv` | Datos de ejemplo (30 filas) |
+| `examples/V_PERFILES.properties` | Valores `-J` de cada perfil, listos para copiar |
+| `examples/Y_EXAMPLE_API_jmeter.yml` | Pipeline Azure Pipelines, perfil `carga` por defecto |
+| `reporter/jmeter_report.py` | Informe PDF — SLA configurable por flag, comparación contra línea base |
 
 ---
 
@@ -44,51 +55,55 @@ npx skills add aiquaa-labs/jmeter-skill
 
 ## Uso rápido
 
-Activá la skill con cualquiera de estos triggers:
-
 ```
-/jmeter:generate   → generar plan .jmx desde spec / curl / URL
+/jmeter:generate   → generar plan .jmx property-driven desde spec / curl / URL / grupo del sandbox
 /jmeter:csv        → generar o actualizar archivo de datos CSV
+/jmeter:perfil      → calcular los valores -J de un perfil (carga/estrés/pico/resistencia/escalabilidad)
 /jmeter:fix        → analizar y reparar plan fallido o resultado anómalo
-/jmeter:ci         → generar pipeline Azure Pipelines
-/jmeter:run        → mostrar el comando de ejecución correcto
-/jmeter:report     → analizar .jtl y generar descripción del PDF
+/jmeter:ci         → generar pipeline Azure Pipelines o GitHub Actions
+/jmeter:run        → mostrar el comando de ejecución correcto para el perfil elegido
+/jmeter:report     → analizar .jtl y generar descripción del PDF, con comparación a baseline
 ```
 
-La skill siempre recolecta contexto antes de generar — URL, endpoints, carga, auth, datos CSV.
+La skill siempre recolecta contexto antes de generar — URL, endpoint, perfil, rate limit
+conocido, auth, datos, correlación, pacing y SLA. Ver el Context Intake completo en `SKILL.md`.
 
 ---
 
-## Escenario de estrés por defecto
+## Perfiles de carga
 
 ```
-Threads (usuarios): 1000
-Loops por thread:   30
-Total requests:     30.000
-Ramp-up:            0 s  (golpe instantáneo)
-Think Time:         ninguno
+baseline       →  1 usuario, sin ramp-up — la referencia contra la que se compara todo
+carga          →  concurrencia esperada del sistema
+estrés         →  2 a 5× la carga esperada — encontrar dónde rompe
+pico           →  ráfaga corta — ¿se recupera después?
+resistencia    →  carga sostenida por horas — buscar fugas
+escalabilidad  →  escalones crecientes — proyectar el crecimiento
 ```
 
-Todos los parámetros son configurables en la conversación o como flags en el comando de ejecución:
+Un solo `.jmx`, todo por línea de comandos:
 
 ```bash
-jmeter -n -t P_MI_API.jmx -l R_MI_API.jtl \
-  -Jthreads=500 -Jloops=60 -JrampUp=30
+jmeter -n -t P_SANDBOX_API.jmx -l results/R_CARGA.jtl \
+  -JbaseUrl=aiquaa-sandbox-api.vercel.app -JapiKey=$SANDBOX_API_KEY \
+  -Jperfil=carga -Jthreads=10 -Jrampup=30 -Jloops=-1 -Jduration=120
 ```
+
+→ [Detalle de cada perfil, con comandos](./references/perfiles.md)
 
 ---
 
-## Datos variables con CSV
+## Correlación, parametrización y temporizadores
 
-JMeter puede usar un dato diferente por cada request. La skill genera el archivo `D_*.csv` con la estructura correcta:
+`examples/P_SANDBOX_API.jmx` incluye, ya conectados:
 
-```csv
-username,password,resource_id
-user001,pass001,uuid-001
-user002,pass002,uuid-002
-```
-
-El CSV se recicla automáticamente — con 20 filas cubre 30.000 requests sin cortes.
+- **Correlación (LO10-11)** — JSON Extractor y Regex Extractor capturando `data.id` de
+  `POST /api/v1/ordenes` para reusarlo en `GET /api/v1/ordenes/{id}`.
+- **Parametrización (LO12-13)** — CSV Data Set Config + funciones `__Random`/`__UUID` para
+  evitar choques con campos `UNIQUE` del sandbox.
+- **Temporizadores (LO14)** — Constant Throughput Timer para pacing (deshabilitado por
+  defecto — "golpe instantáneo" sigue siendo el comportamiento base).
+- **Controladores lógicos (LO14)** — Transaction Controller agrupando la secuencia de negocio.
 
 ---
 
@@ -98,24 +113,26 @@ El CSV se recicla automáticamente — con 20 filas cubre 30.000 requests sin co
 pip install reportlab pandas
 
 python reporter/jmeter_report.py \
-  --results  results/R_MI_API.jtl \
-  --api-name "Mi API" \
-  --threads  1000 \
-  --loops    30 \
-  --author   "Nombre — email@empresa.com" \
-  --repo-url "https://github.com/org/repo" \
-  --api-version "v1.0.0"
+  --results  results/R_CARGA.jtl \
+  --api-name "Sandbox API" \
+  --perfil carga \
+  --baseline results/R_BASELINE.jtl \
+  --sla-error-rate 2 \
+  --sla-p95 800 \
+  --author   "Nombre — email@empresa.com"
 ```
 
-El informe incluye portada con estadísticas, tabla de percentiles (P90/P95/P99), detalle por sampler, top errores y veredicto automático:
+El informe incluye portada con estadísticas reales de la corrida (no `threads × loops` —
+inválido en perfiles por duración), tabla de percentiles, **comparación con línea base** si se
+pasa `--baseline`, detalle por sampler, top errores y veredicto según el SLA dado:
 
-| Veredicto | Condición |
-|-----------|-----------|
-| ✅ Aguanta la carga | Error rate ≤ 2% y P95 ≤ 3000 ms |
-| ⚠️ Degradación detectada | Error rate > 2% o P95 > 3000 ms |
+| Veredicto | Condición (con los defaults) |
+|-----------|-------------------------------|
+| ✅ Dentro de SLA | Error rate ≤ 2% y P95 ≤ 3000 ms |
+| ⚠️ Degradación detectada | Error rate > 2% o P95 > 3000 ms (o bajo `--sla-throughput`) |
 | ❌ Colapso bajo estrés | Error rate > 10% |
 
-Salida: `INFORME_PERF_MI_API.pdf`
+Salida: `INFORME_PERF_<NOMBRE>[_<PERFIL>].pdf`
 
 ---
 
@@ -123,11 +140,12 @@ Salida: `INFORME_PERF_MI_API.pdf`
 
 | Tipo | Patrón | Ejemplo |
 |------|--------|---------|
-| Plan de prueba | `P_NOMBRE_DE_API.jmx` | `P_PAYMENTS_API.jmx` |
-| Datos CSV | `D_NOMBRE_DE_API.csv` | `D_PAYMENTS_API.csv` |
-| Resultados | `R_NOMBRE_DE_API.jtl` | `R_PAYMENTS_API.jtl` |
-| Informe PDF | `INFORME_PERF_NOMBRE_DE_API.pdf` | `INFORME_PERF_PAYMENTS_API.pdf` |
-| Pipeline CI | `Y_NOMBRE_DE_API_jmeter.yml` | `Y_PAYMENTS_API_jmeter.yml` |
+| Plan de prueba | `P_NOMBRE_DE_API.jmx` | `P_SANDBOX_API.jmx` |
+| Datos CSV | `D_NOMBRE_DE_API.csv` | `D_SANDBOX_API.csv` |
+| Perfiles | `V_PERFILES.properties` | (uno por proyecto) |
+| Resultados | `R_NOMBRE_DE_API.jtl` | `R_SANDBOX_API_estres.jtl` |
+| Informe PDF | `INFORME_PERF_NOMBRE_DE_API.pdf` | `INFORME_PERF_SANDBOX_API_CARGA.pdf` |
+| Pipeline CI | `Y_NOMBRE_DE_API_jmeter.yml` | `Y_SANDBOX_API_jmeter.yml` |
 
 ---
 
@@ -137,12 +155,18 @@ Salida: `INFORME_PERF_MI_API.pdf`
 jmeter-skill/
 ├── skills/jmeter/
 │   └── SKILL.md                      ← instrucciones del agente
+├── references/
+│   ├── perfiles.md                   ← los 5 perfiles + baseline
+│   └── ptu-cptjm.md                  ← mapa LO1-23 → esta skill
 ├── examples/
-│   ├── P_EXAMPLE_API.jmx             ← plan de prueba de ejemplo
-│   ├── D_EXAMPLE_API.csv             ← datos de ejemplo
+│   ├── P_SANDBOX_API.jmx             ← plan property-driven contra el sandbox
+│   ├── D_SANDBOX_API.csv             ← datos de ejemplo
+│   ├── V_PERFILES.properties         ← valores -J por perfil
+│   ├── P_EXAMPLE_API.jmx             ← plan genérico (no-sandbox), referencia
+│   ├── D_EXAMPLE_API.csv
 │   └── Y_EXAMPLE_API_jmeter.yml      ← pipeline Azure de ejemplo
 ├── reporter/
-│   ├── jmeter_report.py              ← generador de PDF
+│   ├── jmeter_report.py              ← generador de PDF (SLA + baseline)
 │   └── requirements.txt
 ├── docs/
 │   └── uso.md
@@ -156,9 +180,12 @@ jmeter-skill/
 
 | Skill | Tipo de prueba |
 |-------|----------------|
+| [`sandbox-skill`](../sandbox-skill) | Contrato del entorno de práctica del curso |
 | [`postman-newman-skill`](../postman-newman-skill) | Funcional — colecciones Postman, GUI-first |
 | [`hurl-skill`](../hurl-skill) | Funcional — declarativo, diff-friendly, CI-native |
-| [`jmeter-skill`](.) | Rendimiento — estrés, carga, percentiles, PDF |
+| [`playwright-skill`](../playwright-skill) | E2E navegador + API |
+| [`bdd-skill`](../bdd-skill) | BDD — Gherkin + Cucumber + Playwright |
+| [`jmeter-skill`](.) | Rendimiento — carga, estrés, pico, resistencia, escalabilidad |
 
 ---
 

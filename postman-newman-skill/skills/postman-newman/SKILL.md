@@ -336,6 +336,54 @@ pm.request.headers.add({
 
 ---
 
+## Database Verification (SQL Sandbox)
+
+When the API under test is the course sandbox (`aiquaa-sandbox-api`), close the
+**action → database verification** loop with `POST /api/v1/sql/select`. See skill
+`sandbox` → `references/sql-endpoint.md` for the full contract (guardrails, table
+whitelist, `rowCount`). Only use this pattern against APIs that expose an equivalent
+SQL endpoint — don't assume it exists elsewhere.
+
+### Pattern — create, then verify in DB
+
+```javascript
+// Request 1 — POST /api/v1/ordenes
+// test script:
+pm.test("status 201", () => pm.response.to.have.status(201));
+pm.environment.set("ordenId", pm.response.json().data.id);
+pm.environment.set("montoEsperado", pm.response.json().data.monto);
+```
+
+```javascript
+// Request 2 — POST /api/v1/sql/select
+// body:
+// {
+//   "sql": "SELECT monto FROM ordenes WHERE id = $1",
+//   "params": [{{ordenId}}]
+// }
+// test script:
+pm.test("row exists", () => pm.expect(pm.response.json().rowCount).to.equal(1));
+pm.test("monto persisted matches API response", () => {
+  const persisted = pm.response.json().data[0].monto;
+  pm.expect(persisted).to.equal(Number(pm.environment.get("montoEsperado")));
+});
+```
+
+### Case that must fail — table whitelist
+
+```javascript
+// body: { "sql": "SELECT * FROM api_keys" }
+pm.test("rejected — table outside qa_training whitelist", () => {
+  pm.response.to.have.status(400);
+  pm.expect(pm.response.json().error.code).to.equal("VALIDATION_ERROR");
+});
+```
+
+⚠️ Every verification request also counts against the sandbox rate limit
+(30 req/min per `x-api-key`) — factor it into collection size.
+
+---
+
 ## Newman CLI Reference
 
 ```bash

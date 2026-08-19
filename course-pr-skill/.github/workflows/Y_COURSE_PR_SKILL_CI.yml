@@ -1,0 +1,16 @@
+name: course-pr-skill-ci
+on:
+  push:
+    paths: ['course-pr-skill/**']
+  pull_request:
+    paths: ['course-pr-skill/**']
+jobs:
+  lint-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar que existan los archivos clave
+        run: |
+          test -f course-pr-skill/skills/course-pr/SKILL.md
+          test -f course-pr-skill/references/checklist-entrega.md
+          test -f course-pr-skill/examples/PULL_REQUEST_TEMPLATE.md
