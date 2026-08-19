@@ -4,10 +4,10 @@
 
 Colección de skills para Claude Code, Cursor, Windsurf y más de 40 agentes de IA.
 Cubre el ciclo completo de automatización QA: BDD, pruebas funcionales, pruebas declarativas,
-pruebas E2E de navegador, verificación de base de datos y pruebas de rendimiento dinámicas —
-con salidas compactas, informes PDF profesionales, pipelines CI listos para usar, y entrega
-por Pull Request. Es también la base del **curso de automatización de pruebas de aiquaa**
-(8 semanas, arranca a usar estas skills desde la semana 3).
+pruebas E2E de navegador y de escritorio, verificación de base de datos y objetos de BD, y
+pruebas de rendimiento dinámicas — con salidas compactas, informes PDF profesionales,
+pipelines CI listos para usar, y entrega por Pull Request. Es también la base del **curso de
+automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills desde la semana 3).
 
 ---
 
@@ -21,6 +21,8 @@ por Pull Request. Es también la base del **curso de automatización de pruebas 
 | `hurl-skill` | Hurl | Funcional — declarativo, diff-friendly, CI-native | [→](./hurl-skill/README.md) |
 | `playwright-skill` | Playwright | E2E navegador + API — TypeScript, Page Objects | [→](./playwright-skill/README.md) |
 | `jmeter-skill` | Apache JMeter | Rendimiento dinámico — carga, estrés, pico, resistencia, escalabilidad | [→](./jmeter-skill/README.md) |
+| `flaui-skill` | FlaUI + Reqnroll + NUnit | Funcional — escritorio C# (WinForms/WPF), BDD + trazabilidad | [→](./flaui-skill/README.md) |
+| `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
 | `ocr-bdd-skill` | visión / pdftotext / tesseract | Documento → requisitos → BDD | [→](./ocr-bdd-skill/README.md) |
 | `course-pr-skill` | `gh` / `az repos` | Entrega semanal vía Pull Request | [→](./course-pr-skill/README.md) |
 
@@ -35,6 +37,8 @@ por Pull Request. Es también la base del **curso de automatización de pruebas 
 ¿Querés tests en texto plano que se revisen en PRs?                      →  hurl-skill
 ¿Necesitás automatizar flujos en el navegador o E2E?                     →  playwright-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?           →  jmeter-skill
+¿Automatizás pantallas de escritorio C# (WinForms/WPF)?                  →  flaui-skill
+¿Necesitás probar objetos de BD sin conexión directa al motor?           →  database-object-testing-skill
 ¿Los requisitos llegaron como PDF, foto o captura de pantalla?           →  ocr-bdd-skill
 ¿Ya automatizaste y necesitás entregar por PR?                           →  course-pr-skill
 ```
@@ -60,7 +64,9 @@ al agente). Progresión sugerida — ajustable según el ritmo real de la clase:
 | 8 | Integración final, CI, entrega | `course-pr-skill` | todas las anteriores |
 
 Documentos que llegan como PDF/foto en cualquier semana pasan primero por `ocr-bdd-skill`
-antes de convertirse en `.feature`.
+antes de convertirse en `.feature`. `flaui-skill` y `database-object-testing-skill` cubren
+casos fuera del sandbox del curso (escritorio C# y objetos de BD sin acceso directo al motor)
+— disponibles para proyectos propios del alumno una vez terminado el temario base.
 
 Cada uno de los **10 grupos** del curso trabaja un módulo funcional distinto del sandbox
 durante las 8 semanas — ver `sandbox-skill/references/grupos.md` para el mapeo completo
@@ -327,6 +333,124 @@ export PATH=$PWD/apache-jmeter-5.6.3/bin:$PATH
 
 ---
 
+## flaui-skill
+
+**Herramienta:** [FlaUI](https://github.com/FlaUI/FlaUI) (UIA3) + [Reqnroll](https://reqnroll.net/) + [NUnit](https://nunit.org/)
+**Lenguaje:** C# (`net8.0-windows`)
+**UI soportada:** WinForms y WPF de escritorio (Windows)
+**Reporte CI:** NUnit3 XML nativo → Azure Test Plans + informe PDF con matriz de trazabilidad
+
+Lee requerimientos funcionales, el código real de la pantalla (`.Designer.cs` / `.xaml`) y los
+cambios de un Pull Request para generar automatización funcional: features Gherkin, Window
+Objects, tests NUnit y matriz de trazabilidad `RF-XXX` ↔ tests. Incluye un analizador propio
+(`ui_inventory.py`) que extrae los `AutomationId` reales del código — nunca inventa selectores.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/flaui-skill
+npx skills add aiquaa-labs/flaui-skill -a cursor
+npx skills add aiquaa-labs/flaui-skill -a windsurf
+```
+
+### Instalar el stack localmente
+
+```bash
+dotnet new nunit -n MiApp.UiTests
+cd MiApp.UiTests
+dotnet add package FlaUI.Core
+dotnet add package FlaUI.UIA3
+dotnet add package Reqnroll.NUnit
+dotnet add package NunitXml.TestLogger
+```
+
+### Comandos
+
+| Comando | Acción |
+|---------|--------|
+| `/flaui:inventory` | Inventario de controles reales (AutomationId) de una pantalla |
+| `/flaui:generate` | Generar feature + steps + Window Object + tests desde un requerimiento |
+| `/flaui:window` | Generar o actualizar un Window Object |
+| `/flaui:from-pr` | Leer un PR y actualizar solo los tests impactados por el cambio |
+| `/flaui:trace` | Generar o actualizar la matriz de trazabilidad |
+| `/flaui:fix` | Analizar y reparar un test fallido |
+| `/flaui:ci` | Generar pipeline Azure Pipelines |
+| `/flaui:run` | Mostrar comando `dotnet test` correcto |
+| `/flaui:report` | Analizar resultados y generar el PDF ejecutivo |
+
+### Salidas
+
+`F_NOMBRE.feature` · `S_NOMBRE_Steps.cs` · `N_NOMBRE_Tests.cs` · `W_Nombre.cs` ·
+`MATRIZ_NOMBRE.md` · `Y_NOMBRE_flaui.yml` · `INFORME_UI_NOMBRE.pdf`
+
+### Informe PDF
+
+```bash
+pip install reportlab
+
+python reporter/flaui_report.py \
+  --results TestResult.xml \
+  --app-name "Sistema de Gestión" \
+  --environment "QA" \
+  --author "Nombre — email@empresa.com" \
+  --pr "123"
+```
+
+→ [Documentación completa](./flaui-skill/README.md)
+
+---
+
+## database-object-testing-skill
+
+**Herramienta:** runner Node.js + API REST corporativa (sin driver ni acceso directo al motor)
+**Formato:** suites `.json`, reglas en `rules/*.md`
+**Reporte:** PDF, JSON, Markdown y JUnit para CI
+
+Prueba objetos de bases de datos relacionales (vistas, SQL, funciones, procedimientos,
+paquetes, triggers) a través de un gateway REST corporativo — nunca se conecta al motor
+directo. Compara comportamiento entre una versión base y una candidata (filas sin orden),
+controla regresiones de costo con umbrales porcentuales, y aplica reglas humanas/ejecutables
+almacenadas como Markdown.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/database-object-testing-skill
+```
+
+### Inicio rápido
+
+Requiere Node.js 20+. El runner no tiene dependencias npm; para el PDF, `npm run report:deps`
+(ReportLab). Ejemplo con dos servicios simulados en paralelo:
+
+```bash
+npm run example:baseline
+npm run example:candidate
+```
+
+```powershell
+$env:DBTEST_BASELINE_URL='http://127.0.0.1:4101'
+$env:DBTEST_CANDIDATE_URL='http://127.0.0.1:4102'
+$env:DBTEST_API_TOKEN='local-example-token'
+npm run example:run
+```
+
+### Comandos
+
+```bash
+node src/cli.mjs validate-rules --rules rules
+node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results
+```
+
+Integración real: implementar los endpoints normalizados de
+`skills/test-database-objects/references/api-contract.md`, con un usuario de solo los
+privilegios necesarios y lista permitida de objetos — nunca apuntar suites de escritura a
+producción.
+
+→ [Documentación completa](./database-object-testing-skill/README.md)
+
+---
+
 ## ocr-bdd-skill
 
 **Entrada:** PDF, imagen, captura de pantalla
@@ -399,6 +523,8 @@ npx skills add aiquaa-labs/postman-newman-skill
 npx skills add aiquaa-labs/hurl-skill
 npx skills add aiquaa-labs/playwright-skill
 npx skills add aiquaa-labs/jmeter-skill
+npx skills add aiquaa-labs/flaui-skill
+npx skills add aiquaa-labs/database-object-testing-skill
 npx skills add aiquaa-labs/ocr-bdd-skill
 npx skills add aiquaa-labs/course-pr-skill
 ```
@@ -416,17 +542,21 @@ Todas las skills usan el mismo sistema de prefijos:
 | `H_` | Test file Hurl `.hurl` | hurl |
 | `V_` | Variables Hurl `.env` / perfiles JMeter `.properties` | hurl, jmeter |
 | `T_` | Test spec Playwright `.spec.ts` | playwright |
-| `F_` | Feature Gherkin `.feature` | bdd, ocr-bdd |
-| `S_` | Step definitions `.steps.ts` | bdd |
+| `F_` | Feature Gherkin `.feature` | bdd, ocr-bdd, flaui |
+| `S_` | Step definitions (`.steps.ts` en bdd, `_Steps.cs` en flaui) | bdd, flaui |
 | `P_` | Plan de prueba JMeter `.jmx` | jmeter |
 | `D_` | Datos CSV JMeter `.csv` | jmeter |
 | `R_` | Resultados JMeter `.jtl` | jmeter |
+| `N_` | Test NUnit puro `_Tests.cs` | flaui |
+| `W_` | Window Object `W_Nombre.cs` | flaui |
+| `MATRIZ_` | Matriz de trazabilidad `.md` | flaui |
 | `TRAZA_` | Matriz de trazabilidad requisito → escenario | ocr-bdd |
 | `Y_` | Pipeline CI `.yml` (Azure / GitHub) | todas |
 | `INFORME_DE_AUT_` | Informe PDF funcional | postman-newman |
 | `INFORME_E2E_` | Informe PDF ejecutivo E2E | playwright |
 | `INFORME_BDD_` | Informe PDF BDD con trazabilidad | bdd |
 | `INFORME_PERF_` | Informe PDF rendimiento | jmeter |
+| `INFORME_UI_` | Informe PDF con matriz de trazabilidad | flaui |
 
 ---
 
@@ -434,13 +564,15 @@ Todas las skills usan el mismo sistema de prefijos:
 
 - **Context Intake** — el agente pregunta URL, flujo, auth y datos antes de generar. Nunca
   inventa campos ni selectores. `ocr-bdd-skill` extiende esta regla a documentos: nunca
-  completa lo ilegible por inferencia.
+  completa lo ilegible por inferencia; `flaui-skill` la extiende al código real de la pantalla:
+  nunca inventa un `AutomationId`.
 - **Caveman mode** — salidas comprimidas (~75% menos tokens) sin perder precisión técnica.
   Activar con `/caveman`.
 - **Informe PDF** — cada skill genera su propio PDF con portada, métricas, detalle y
   veredicto. Python + ReportLab.
-- **CI ready** — todos los templates YML usan JUnit/JSON para integrarse con Azure Test Plans
-  o GitHub Actions, con `continueOnError`/reporte `condition: always()`.
+- **CI ready** — todos los templates YML usan JUnit/JSON (`PublishTestResults@2` en Azure) para
+  integrarse con Azure Test Plans o GitHub Actions, con `continueOnError`/reporte
+  `condition: always()`.
 - **Sin hardcodeo** — URLs, tokens y credenciales siempre en variables de entorno. Nunca en
   los archivos generados.
 - **Verificación en base de datos** — `postman-newman`, `hurl`, `playwright` y `bdd` saben
@@ -454,15 +586,17 @@ Todas las skills usan el mismo sistema de prefijos:
 
 ```
 aiquaa-labs/
-├── sandbox-skill/           → contrato del entorno de práctica del curso
-├── bdd-skill/                → Cucumber + Playwright — BDD, semana 3+
-├── postman-newman-skill/    → Postman + Newman — pruebas funcionales GUI
-├── hurl-skill/               → Hurl — pruebas funcionales declarativas
-├── playwright-skill/        → Playwright — E2E navegador + API TypeScript
-├── jmeter-skill/             → JMeter — rendimiento dinámico, perfiles PtU CPTJM
-├── ocr-bdd-skill/            → documento → requisitos → BDD
-├── course-pr-skill/          → entrega semanal vía Pull Request
-└── README.md                 → este archivo
+├── sandbox-skill/                  → contrato del entorno de práctica del curso
+├── bdd-skill/                      → Cucumber + Playwright — BDD, semana 3+
+├── postman-newman-skill/           → Postman + Newman — pruebas funcionales GUI
+├── hurl-skill/                     → Hurl — pruebas funcionales declarativas
+├── playwright-skill/               → Playwright — E2E navegador + API TypeScript
+├── jmeter-skill/                   → JMeter — rendimiento dinámico, perfiles PtU CPTJM
+├── flaui-skill/                    → FlaUI + Reqnroll + NUnit — escritorio C# (WinForms/WPF)
+├── database-object-testing-skill/  → Node.js + API REST — objetos de BD relacional
+├── ocr-bdd-skill/                  → documento → requisitos → BDD
+├── course-pr-skill/                → entrega semanal vía Pull Request
+└── README.md                       → este archivo
 ```
 
 ---

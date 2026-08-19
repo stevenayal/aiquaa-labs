@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pruebas de objetos de base de datos"
+  short_description: "Prueba objetos relacionales vía API REST"
+  default_prompt: "Usa $test-database-objects para diseñar y ejecutar pruebas de un objeto de base de datos vía API REST."
