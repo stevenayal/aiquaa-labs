@@ -1,0 +1,20 @@
+name: qa-orchestrator-skill-ci
+on:
+  push:
+    paths: ['qa-orchestrator-skill/**']
+  pull_request:
+    paths: ['qa-orchestrator-skill/**']
+jobs:
+  lint-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar que existan los archivos clave
+        run: |
+          test -f qa-orchestrator-skill/skills/qa-orchestrator/SKILL.md
+          test -f qa-orchestrator-skill/references/signal-mapping.md
+          test -f qa-orchestrator-skill/references/decision-log-schema.md
+          test -f qa-orchestrator-skill/references/consolidated-report-schema.md
+          test -f qa-orchestrator-skill/references/prerequisites-check.md
+          test -f qa-orchestrator-skill/examples/BITACORA_EJEMPLO.md
+          test -f qa-orchestrator-skill/examples/INFORME_CONSOLIDADO_EJEMPLO.md
