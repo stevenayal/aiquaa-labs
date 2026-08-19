@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { readJson } from './json.mjs';
+import { generatePdfReport } from './pdf-report.mjs';
 import { writeReports } from './reporters.mjs';
 import { loadRules } from './rules.mjs';
 import { runSuite } from './runner.mjs';
@@ -24,14 +25,16 @@ async function main() {
     return;
   }
   if (command !== 'run' || !options.suite) {
-    console.error('Uso: db-object-test run --suite <suite.json> [--rules rules] [--output results]');
+    console.error('Uso: db-object-test run --suite <suite.json> [--rules rules] [--output results] [--python <ruta>]');
     console.error('     db-object-test validate-rules --rules <directorio>');
     process.exitCode = 2;
     return;
   }
   const suite = await readJson(resolve(options.suite));
   const report = await runSuite(suite, { rulesDirectory: options.rules ? resolve(options.rules) : undefined });
-  await writeReports(report, resolve(options.output ?? 'results'));
+  const paths = await writeReports(report, resolve(options.output ?? 'results'));
+  await generatePdfReport({ inputPath: paths.json, outputPath: paths.pdf, python: options.python });
+  console.log(`PDF: ${paths.pdf}`);
   console.log(`${report.status.toUpperCase()}: ${report.summary.passed}/${report.summary.total} casos aprobados`);
   process.exitCode = report.status === 'passed' ? 0 : 1;
 }

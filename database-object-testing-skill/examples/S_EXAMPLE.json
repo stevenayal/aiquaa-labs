@@ -1,5 +1,11 @@
 {
   "name": "package-customer-status",
+  "metadata": {
+    "environment": "QA comparativo",
+    "version": "0.1.0",
+    "author": "Equipo QA",
+    "repoUrl": "https://github.com/stevenayal/aiquaa-labs"
+  },
   "targets": {
     "baseline": {
       "baseUrlEnv": "DBTEST_BASELINE_URL",
