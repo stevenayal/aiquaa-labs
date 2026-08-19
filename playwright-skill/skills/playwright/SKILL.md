@@ -896,6 +896,79 @@ ADVERTENCIAS:
 
 ---
 
+## Verificación en base de datos (SQL Sandbox)
+
+Cuando la app bajo prueba corre contra el sandbox del curso (`aiquaa-sandbox-api`), cerrar el
+ciclo **UI/API → verificación en BD** con `POST /api/v1/sql/select` usando la fixture `request`
+de Playwright. Ver skill `sandbox` → `references/sql-endpoint.md` para el contrato completo
+(guardrails, whitelist de tablas, `rowCount`). Solo aplica si la API expone un endpoint SQL
+equivalente — no asumirlo en otros proyectos.
+
+### DbHelper.ts — helper reutilizable
+
+```typescript
+import { APIRequestContext } from '@playwright/test';
+
+export class DbHelper {
+  constructor(
+    private readonly request: APIRequestContext,
+    private readonly apiKey: string = process.env.SANDBOX_API_KEY || '',
+  ) {}
+
+  async select<T = Record<string, unknown>>(sql: string, params: unknown[] = []) {
+    const res = await this.request.post('/api/v1/sql/select', {
+      headers: { 'x-api-key': this.apiKey },
+      data: { sql, params },
+    });
+    const body = await res.json();
+    if (!res.ok()) throw new Error(`sql/select falló: ${JSON.stringify(body)}`);
+    return body as { data: T[]; rowCount: number };
+  }
+}
+```
+
+### Caso de uso — crear orden por UI, verificar monto en BD
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { DbHelper } from './helpers/DbHelper';
+
+test('el monto de la orden creada por UI coincide con lo persistido', async ({ page, request }) => {
+  const db = new DbHelper(request);
+
+  await page.goto('/ordenes/nueva');
+  await page.getByTestId('ordenes-field-producto').fill('Mouse');
+  await page.getByTestId('ordenes-field-cantidad').fill('2');
+  await page.getByTestId('ordenes-submit').click();
+
+  const ordenId = await page.getByTestId('ordenes-row-id').textContent();
+
+  const { rowCount, data } = await db.select(
+    'SELECT monto FROM ordenes WHERE id = $1', [ordenId],
+  );
+  expect(rowCount).toBe(1);
+  expect(data[0].monto).toBe(31.0); // 2 × 15.5 — calculado por el servidor, no por el cliente
+});
+```
+
+### Caso que debe fallar — whitelist de tablas
+
+```typescript
+test('tabla fuera de qa_training es rechazada', async ({ request }) => {
+  const res = await request.post('/api/v1/sql/select', {
+    headers: { 'x-api-key': process.env.SANDBOX_API_KEY! },
+    data: { sql: 'SELECT * FROM api_keys' },
+  });
+  expect(res.status()).toBe(400);
+  expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+});
+```
+
+⚠️ Cada verificación consume una petición del rate limit del sandbox (30 req/min por
+`x-api-key`) — en un `test.describe` con muchos `it`, considerar una key dedicada para BD.
+
+---
+
 ## Fallos comunes y fixes
 
 | Síntoma | Causa | Fix |

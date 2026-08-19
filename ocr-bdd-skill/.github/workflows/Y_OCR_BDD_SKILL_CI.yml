@@ -1,0 +1,16 @@
+name: ocr-bdd-skill-ci
+on:
+  push:
+    paths: ['ocr-bdd-skill/**']
+  pull_request:
+    paths: ['ocr-bdd-skill/**']
+jobs:
+  lint-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar que existan los archivos clave
+        run: |
+          test -f ocr-bdd-skill/skills/ocr-bdd/SKILL.md
+          test -f ocr-bdd-skill/examples/F_DESDE_DOCUMENTO.feature
+          test -f ocr-bdd-skill/examples/TRAZA_EJEMPLO.md

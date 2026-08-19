@@ -564,6 +564,62 @@ CONFIANZA: ALTA | MEDIA | BAJA
 
 ---
 
+## Verificación en base de datos (SQL Sandbox)
+
+Cuando la API de prueba es el sandbox del curso (`aiquaa-sandbox-api`), cerrar el ciclo
+**acción → verificación en BD** con `POST /api/v1/sql/select`. Ver skill `sandbox` →
+`references/sql-endpoint.md` para el contrato completo (guardrails, whitelist de tablas,
+`rowCount`). No usar este patrón contra APIs que no expongan un endpoint SQL equivalente.
+
+### Patrón — crear y verificar en BD
+
+```hurl
+# 1. Acción — crear una orden
+POST {{baseUrl}}/api/v1/ordenes
+x-api-key: {{apiKey}}
+Content-Type: application/json
+{
+  "usuarioId": 7,
+  "items": [{ "producto": "Mouse", "cantidad": 2, "precioUnitario": 15.5 }]
+}
+HTTP 201
+[Captures]
+orden_id: jsonpath "$.data.id"
+[Asserts]
+jsonpath "$.data.monto" == 31.0
+
+# 2. Verificación — el monto persistido coincide con lo calculado por el servidor
+POST {{baseUrl}}/api/v1/sql/select
+x-api-key: {{apiKey}}
+Content-Type: application/json
+{
+  "sql": "SELECT monto FROM ordenes WHERE id = $1",
+  "params": [{{orden_id}}]
+}
+HTTP 200
+[Asserts]
+jsonpath "$.rowCount" == 1
+jsonpath "$.data[0].monto" == 31.0
+```
+
+### Caso que debe fallar — whitelist de tablas
+
+```hurl
+# api_keys no pertenece al schema qa_training — debe rechazar
+POST {{baseUrl}}/api/v1/sql/select
+x-api-key: {{apiKey}}
+Content-Type: application/json
+{ "sql": "SELECT * FROM api_keys" }
+HTTP 400
+[Asserts]
+jsonpath "$.error.code" == "VALIDATION_ERROR"
+```
+
+⚠️ Cada entry de verificación es una petición más contra el rate limit del sandbox
+(30 req/min por `x-api-key`) — contarlas en archivos `.hurl` largos.
+
+---
+
 ## Fallos comunes y fixes
 
 | Síntoma | Causa | Fix |
