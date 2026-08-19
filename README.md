@@ -25,6 +25,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
 | `ocr-bdd-skill` | visión / pdftotext / tesseract | Documento → requisitos → BDD | [→](./ocr-bdd-skill/README.md) |
 | `course-pr-skill` | `gh` / `az repos` | Entrega semanal vía Pull Request | [→](./course-pr-skill/README.md) |
+| `qa-orchestrator-skill` | — | Ruteo — decide qué skill(s) usar desde un PR y/o historia, orquesta y consolida resultados | [→](./qa-orchestrator-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
 
 ---
@@ -43,11 +44,14 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Cambió una columna core y necesitás conocer SP/packages afectados?      →  assess-database-column-impact
 ¿Los requisitos llegaron como PDF, foto o captura de pantalla?           →  ocr-bdd-skill
 ¿Ya automatizaste y necesitás entregar por PR?                           →  course-pr-skill
+¿Tenés un PR y/o una historia y no sabés qué skill(s) usar?              →  qa-orchestrator-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
 ```
 
 Todas son complementarias — se usan juntas en el mismo proyecto. `sandbox-skill` es la base
 de contexto que las demás consultan para no inventar endpoints, campos ni tablas.
+`qa-orchestrator-skill` no reemplaza a ninguna — decide cuál(es) de las anteriores aplican a
+un cambio concreto y las orquesta.
 
 ---
 
@@ -517,6 +521,46 @@ npx skills add aiquaa-labs/sandbox-skill
 
 ---
 
+## qa-orchestrator-skill
+
+**Entrada:** un Pull Request (diff, archivos cambiados, descripción) y/o una historia de
+usuario/requerimiento
+**Salida:** decisión de ruteo auditable + automatización generada/corrida por la(s) skill(s)
+elegidas + informe consolidado
+
+Analiza el contexto (PR y/o historia), lo puntúa contra un mapa de señales determinístico
+(rutas, extensiones, keywords), decide qué skill(s) de esta tabla aplican — puede ser más de
+una si el cambio toca varias capas — las invoca en secuencia para generar y correr la
+automatización, y entrega `INFORME_CONSOLIDADO_*.md` + `BITACORA_*.md`. Nunca adivina en casos
+ambiguos: pregunta. Nunca abre el PR final: delega siempre a `course-pr-skill` con
+confirmación explícita.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/qa-orchestrator-skill
+```
+
+### Comandos
+
+| Comando | Acción |
+|---------|--------|
+| `/qa:analizar` | Intake + escaneo de secretos + clasificación + gate si es ambiguo |
+| `/qa:generar` | Invoca cada skill seleccionada para generar sus artefactos |
+| `/qa:ejecutar` | Corre cada suite generada, verificando prerrequisitos |
+| `/qa:consolidar` | Agrega los reportes nativos en un informe consolidado |
+| `/qa:orquestar` | Flujo completo `analizar → generar → ejecutar → consolidar` |
+| `/qa:entregar` | Resumen final + delega a `course-pr-skill` (con confirmación) |
+
+### Salidas
+
+`BITACORA_NOMBRE.md` · `INFORME_CONSOLIDADO_NOMBRE.md` · artefactos propios de cada skill
+invocada
+
+→ [Documentación completa](./qa-orchestrator-skill/README.md)
+
+---
+
 ## token-optimization-skill
 
 Criterio de herramienta y compresión de salida para sesiones largas — cuándo preferir
@@ -547,6 +591,7 @@ npx skills add aiquaa-labs/flaui-skill
 npx skills add aiquaa-labs/database-object-testing-skill
 npx skills add aiquaa-labs/ocr-bdd-skill
 npx skills add aiquaa-labs/course-pr-skill
+npx skills add aiquaa-labs/qa-orchestrator-skill
 npx skills add aiquaa-labs/token-optimization-skill
 ```
 
@@ -578,6 +623,8 @@ Todas las skills usan el mismo sistema de prefijos:
 | `INFORME_BDD_` | Informe PDF BDD con trazabilidad | bdd |
 | `INFORME_PERF_` | Informe PDF rendimiento | jmeter |
 | `INFORME_UI_` | Informe PDF con matriz de trazabilidad | flaui |
+| `BITACORA_` | Bitácora de decisión de ruteo `.md` | qa-orchestrator |
+| `INFORME_CONSOLIDADO_` | Informe agregado multi-skill `.md` | qa-orchestrator |
 
 ---
 
@@ -599,7 +646,8 @@ Todas las skills usan el mismo sistema de prefijos:
 - **Verificación en base de datos** — `postman-newman`, `hurl`, `playwright` y `bdd` saben
   cerrar el ciclo acción → verificación con `POST /api/v1/sql/select` del sandbox.
 - **Entrega auditable** — `course-pr-skill` nunca commitea con secretos detectados en el diff
-  ni abre un PR sin confirmación.
+  ni abre un PR sin confirmación. `qa-orchestrator-skill` extiende la auditoría río arriba:
+  cada decisión de ruteo (qué skill se usó y por qué) queda registrada en una `BITACORA_*.md`.
 
 ---
 
@@ -617,6 +665,7 @@ aiquaa-labs/
 ├── database-object-testing-skill/  → Node.js + API REST — objetos de BD relacional
 ├── ocr-bdd-skill/                  → documento → requisitos → BDD
 ├── course-pr-skill/                → entrega semanal vía Pull Request
+├── qa-orchestrator-skill/          → ruteo — decide y orquesta qué skill(s) usar desde un PR/historia
 ├── token-optimization-skill/       → criterio de herramienta y compresión — ahorro de tokens
 └── README.md                       → este archivo
 ```
