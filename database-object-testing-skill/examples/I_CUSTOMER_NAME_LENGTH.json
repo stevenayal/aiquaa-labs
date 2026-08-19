@@ -1,0 +1,36 @@
+{
+  "name": "customer-display-name-impact",
+  "metadata": {
+    "environment": "QA",
+    "version": "column-length-100",
+    "author": "Equipo QA"
+  },
+  "target": {
+    "schema": "CRM",
+    "table": "CUSTOMER",
+    "column": "DISPLAY_NAME"
+  },
+  "change": {
+    "dataType": "VARCHAR2",
+    "fromLength": 50,
+    "toLength": 100,
+    "lengthSemantics": "CHAR"
+  },
+  "targets": {
+    "candidate": {
+      "baseUrlEnv": "DBTEST_CANDIDATE_URL",
+      "tokenEnv": "DBTEST_API_TOKEN"
+    }
+  },
+  "discovery": {
+    "includeObjectTypes": ["procedure", "package", "trigger", "view"]
+  },
+  "probe": {
+    "operations": ["INSERT", "UPDATE"],
+    "boundaries": ["oldMax", "oldMaxPlusOne", "newMax", "newMaxPlusOne"],
+    "profiles": [
+      { "name": "ascii", "character": "A" },
+      { "name": "unicode", "character": "Ñ" }
+    ]
+  }
+}

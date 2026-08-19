@@ -40,3 +40,16 @@ export function resolveEnv(value, env = process.env) {
   }
   return value;
 }
+
+export function setPath(value, path, replacement) {
+  const parts = path.replace(/^\$\.?/, '').replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+  if (!parts.length) return replacement;
+  const clone = structuredClone(value);
+  let current = clone;
+  for (const part of parts.slice(0, -1)) {
+    if (!current[part] || typeof current[part] !== 'object') current[part] = {};
+    current = current[part];
+  }
+  current[parts.at(-1)] = replacement;
+  return clone;
+}

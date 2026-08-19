@@ -7,6 +7,8 @@ No requiere un driver Oracle ni acceso directo a la base de datos. El gateway RE
 ## Capacidades
 
 - Vistas, SQL, funciones, procedimientos, paquetes y triggers.
+- Mapa de relaciones hacia tablas y columnas core.
+- Pruebas automáticas de impacto para ampliaciones `CHAR`, `VARCHAR` y `VARCHAR2`.
 - Assertions sobre cualquier ruta JSON.
 - Comparación funcional base/candidato, con filas sin orden.
 - Umbrales porcentuales para costo, lecturas y otras métricas normalizadas.
@@ -46,6 +48,7 @@ Los artefactos aparecen en `results/`, incluido `db-test-report.pdf`.
 ```text
 database-object-testing-skill/
 ├── skills/test-database-objects/  skill instalable y referencias
+├── skills/assess-database-column-impact/ skill especializada en dependencias
 ├── src/                            runner Node.js
 ├── rules/                          reglas y buenas prácticas .md
 ├── reporter/                       generador del informe PDF
@@ -64,8 +67,11 @@ Configurar siempre un usuario de solo los privilegios necesarios, listas permiti
 ```bash
 node src/cli.mjs validate-rules --rules rules
 node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results
+node src/cli.mjs impact --change examples/I_CUSTOMER_NAME_LENGTH.json --output results/impact
 npm test
 ```
+
+El comando `impact` consulta `/v1/database/dependencies`, crea un mapa de SP/packages/triggers/vistas y ejecuta probes en las longitudes anterior, anterior+1, nueva y nueva+1. Cualquier truncamiento, rechazo dentro del nuevo límite o brecha de cobertura falla el análisis.
 
 Si Python no está disponible en el `PATH`, usar `--python <ruta>` o definir `DBTEST_PYTHON`.
 
