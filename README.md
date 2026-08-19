@@ -29,6 +29,7 @@ profesionales y pipelines CI listos para usar.
 ¿Necesitás automatizar flujos en el navegador o E2E?            →  playwright-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?  →  jmeter-skill
 ¿Necesitás probar objetos de BD sin conexión directa al motor?   →  database-object-testing-skill
+¿Cambió una columna core y necesitás conocer SP/packages afectados? → assess-database-column-impact
 ```
 
 Las cuatro skills son complementarias — se pueden usar juntas en el mismo proyecto.

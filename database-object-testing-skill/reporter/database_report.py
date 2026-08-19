@@ -12,8 +12,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    CondPageBreak,
     HRFlowable,
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -157,7 +157,13 @@ def build_story(report):
     story.extend([stats, Spacer(1, 8 * mm), Paragraph("Resumen de casos", style["section"])])
 
     rows = [["Caso", "Objeto", "Duracion", "Hallazgos", "Estado"]]
-    for case in report["cases"]:
+    summary_cases = report["cases"]
+    if report.get("impact"):
+        summary_cases = [
+            case for case in report["cases"]
+            if case["id"].endswith("::COVERAGE") or case["id"].startswith("UNRESOLVED::")
+        ]
+    for case in summary_cases:
         failed_findings = sum(1 for finding in case.get("findings", []) if not finding.get("passed", False))
         rows.append([
             Paragraph(safe(case["id"]), style["body"]),
@@ -170,17 +176,57 @@ def build_story(report):
     summary_table.setStyle(table_style())
     story.extend([summary_table, PageBreak(), Paragraph("Detalle funcional y tecnico", style["section"]), Spacer(1, 2 * mm)])
 
+    if report.get("impact"):
+        impact = report["impact"]
+        target = impact["target"]
+        change = impact["change"]
+        story.extend([
+            Paragraph("Mapa de dependencias", style["section"]),
+            Paragraph(
+                f"Columna core: <b>{safe(target['schema'])}.{safe(target['table'])}.{safe(target['column'])}</b> - "
+                f"Ampliacion: {change['fromLength']} a {change['toLength']} {safe(change.get('lengthSemantics', 'CHAR'))}",
+                style["body"],
+            ),
+            Spacer(1, 3 * mm),
+        ])
+        dependency_rows = [["Objeto dependiente", "Tipo", "Operaciones", "Pruebas"]]
+        for dependency in impact.get("dependencies", []):
+            obj = dependency.get("object", {})
+            dependency_rows.append([
+                Paragraph(f"{safe(obj.get('schema'))}.{safe(obj.get('name'))}", style["body"]),
+                Paragraph(safe(obj.get("type")), style["body"]),
+                Paragraph(safe(", ".join(dependency.get("operations", []))), style["body"]),
+                str(len(dependency.get("invocations", []))),
+            ])
+        dependency_table = Table(dependency_rows, colWidths=[78 * mm, 30 * mm, 43 * mm, 24 * mm], repeatRows=1)
+        dependency_table.setStyle(table_style())
+        story.extend([dependency_table, PageBreak(), Spacer(1, 10 * mm)])
+
     category_names = {
         "assertion": "Validacion funcional",
         "functional-diff": "Diferencia funcional",
         "cost": "Comparacion de costo",
         "rule": "Regla de base de datos",
         "execution": "Ejecucion",
+        "dependency": "Relacion detectada",
+        "coverage": "Cobertura de impacto",
+        "definition": "Compatibilidad estatica",
+        "impact-probe": "Prueba de frontera",
+        "value-preservation": "Integridad del valor",
     }
-    for index, case in enumerate(report["cases"]):
+    detail_cases = report["cases"]
+    if report.get("impact"):
+        detail_cases = [case for case in detail_cases if not case["id"].endswith("::COVERAGE")]
+    for index, case in enumerate(detail_cases):
+        if report.get("impact") and index > 0:
+            story.append(PageBreak())
         findings = case.get("findings", [])
+        case_id_parts = str(case["id"]).split("::")
+        display_case_id = safe(case_id_parts[0])
+        scenario = " :: ".join(safe(part) for part in case_id_parts[1:])
+        scenario_line = f'<br/><font size="9">{scenario}</font>' if scenario else ""
         heading = [
-            Paragraph(f"{safe(case['id'])} - {safe(case['objectType'])}", style["case"]),
+            Paragraph(f"{display_case_id} - {safe(case['objectType'])}{scenario_line}", style["case"]),
             Paragraph(f"Estado: <b>{status_label(case['status'])}</b> | Duracion: {case.get('durationMs', 0)} ms", style["small"]),
             Spacer(1, 2 * mm),
         ]
@@ -202,12 +248,26 @@ def build_story(report):
             finding_rows.append(["General", "Sin hallazgos registrados", Paragraph('<font color="#15803D"><b>OK</b></font>', style["body"])])
         detail = Table(finding_rows, colWidths=[38 * mm, 110 * mm, 27 * mm], repeatRows=1)
         detail.setStyle(table_style())
-        block = heading + [detail, Spacer(1, 7 * mm)]
-        if len(findings) <= 5:
-            story.append(KeepTogether(block))
-        else:
-            story.extend(block)
-        if index < len(report["cases"]) - 1:
+        case_block = Table(
+            [[Spacer(1, 12 * mm if report.get("impact") else 0)], [heading[0]], [heading[1]], [heading[2]], [detail]],
+            colWidths=[175 * mm],
+            splitByRow=0,
+        )
+        case_block.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        if not report.get("impact"):
+            required_space = min(120 * mm, (55 + len(findings) * 12) * mm)
+            story.append(CondPageBreak(required_space))
+        story.extend([case_block, Spacer(1, 7 * mm)])
+        add_separator = index < len(detail_cases) - 1
+        if report.get("impact"):
+            add_separator = False
+        if add_separator:
             story.append(HRFlowable(width="100%", thickness=0.4, color=BORDER))
 
     story.extend([
@@ -228,7 +288,7 @@ def generate(results, output):
         pagesize=A4,
         rightMargin=MARGIN,
         leftMargin=MARGIN,
-        topMargin=17 * mm,
+        topMargin=(30 if report.get("impact") else 17) * mm,
         bottomMargin=18 * mm,
         title=f"Informe funcional - {report.get('suite', 'base de datos')}",
         author=report.get("metadata", {}).get("author", "aiquaa"),

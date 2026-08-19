@@ -48,11 +48,13 @@ export function createApiClient(target, env = process.env, fetchImpl = globalThi
   const paths = {
     execute: target.paths?.execute ?? '/v1/database/execute',
     explain: target.paths?.explain ?? '/v1/database/explain',
-    inspect: target.paths?.inspect ?? '/v1/database/inspect'
+    inspect: target.paths?.inspect ?? '/v1/database/inspect',
+    dependencies: target.paths?.dependencies ?? '/v1/database/dependencies'
   };
   return {
     execute: (request) => post(paths.execute, request),
     explain: (request) => post(paths.explain, request),
-    inspect: (request) => post(paths.inspect, request)
+    inspect: (request) => post(paths.inspect, request),
+    dependencies: (request) => post(paths.dependencies, request)
   };
 }
