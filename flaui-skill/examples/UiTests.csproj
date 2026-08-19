@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!--
+      NO poner UseWindowsForms/UseWPF acá. Este es el proyecto de TESTS, no la app bajo
+      prueba: automatiza el .exe ya compilado vía UIAutomation, no lo referencia ni lo
+      compila. Activar cualquiera de los dos trae usings implícitos de
+      System.Windows.Forms / System.Windows.Controls que colisionan (CS0104) con los
+      tipos de FlaUI.Core.AutomationElements que comparten nombre: TextBox, Button,
+      CheckBox, Label, Application.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FlaUI.Core" Version="4.0.0" />
+    <PackageReference Include="FlaUI.UIA3" Version="4.0.0" />
+    <PackageReference Include="Reqnroll.NUnit" Version="2.1.0" />
+    <PackageReference Include="NUnit" Version="4.2.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NunitXml.TestLogger" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appsettings.uitests.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="F_EXAMPLE_LOGIN.feature">
+      <Generator>ReqnrollSingleFileGenerator</Generator>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      fixtures/ son datos sintéticos (.Designer.cs / .xaml) usados únicamente por
+      analyzer/ui_inventory.py para validar el parser — no son parte del proyecto de
+      tests y no deben compilarse acá.
+    -->
+    <Compile Remove="fixtures/**/*.cs" />
+    <None Include="fixtures/**/*.cs" />
+  </ItemGroup>
+
+</Project>

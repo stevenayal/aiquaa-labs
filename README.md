@@ -17,6 +17,7 @@ profesionales y pipelines CI listos para usar.
 | `hurl-skill` | Hurl | Funcional — declarativo, diff-friendly, CI-native | [→](./hurl-skill/README.md) |
 | `playwright-skill` | Playwright | E2E navegador + API — TypeScript, Page Objects | [→](./playwright-skill/README.md) |
 | `jmeter-skill` | Apache JMeter | Rendimiento y estrés — 30.000 req, percentiles | [→](./jmeter-skill/README.md) |
+| `flaui-skill` | FlaUI + Reqnroll + NUnit | Funcional — escritorio C# (WinForms/WPF), BDD + trazabilidad | [→](./flaui-skill/README.md) |
 
 ---
 
@@ -27,9 +28,10 @@ profesionales y pipelines CI listos para usar.
 ¿Querés tests en texto plano que se revisen en PRs?             →  hurl-skill
 ¿Necesitás automatizar flujos en el navegador o E2E?            →  playwright-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?  →  jmeter-skill
+¿Automatizás pantallas de escritorio C# (WinForms/WPF)?         →  flaui-skill
 ```
 
-Las cuatro skills son complementarias — se pueden usar juntas en el mismo proyecto.
+Las cinco skills son complementarias — se pueden usar juntas en el mismo proyecto.
 
 ---
 
@@ -299,6 +301,81 @@ python reporter/jmeter_report.py \
 
 ---
 
+## flaui-skill
+
+**Herramienta:** [FlaUI](https://github.com/FlaUI/FlaUI) (UIA3) + [Reqnroll](https://reqnroll.net/) + [NUnit](https://nunit.org/)
+**Lenguaje:** C# (`net8.0-windows`)
+**UI soportada:** WinForms y WPF de escritorio (Windows)
+**Reporte CI:** NUnit3 XML nativo → Azure Test Plans + informe PDF con matriz de trazabilidad
+
+Lee requerimientos funcionales, el código real de la pantalla (`.Designer.cs` / `.xaml`) y los
+cambios de un Pull Request para generar automatización funcional: features Gherkin, Window
+Objects, tests NUnit y matriz de trazabilidad `RF-XXX` ↔ tests. Incluye un analizador propio
+(`ui_inventory.py`) que extrae los `AutomationId` reales del código — nunca inventa selectores.
+
+### Instalación
+
+```bash
+# Claude Code
+npx skills add aiquaa-labs/flaui-skill
+
+# Cursor
+npx skills add aiquaa-labs/flaui-skill -a cursor
+
+# Windsurf
+npx skills add aiquaa-labs/flaui-skill -a windsurf
+
+# Cualquier otro agente
+npx skills add aiquaa-labs/flaui-skill
+```
+
+### Instalar el stack localmente
+
+```bash
+dotnet new nunit -n MiApp.UiTests
+cd MiApp.UiTests
+dotnet add package FlaUI.Core
+dotnet add package FlaUI.UIA3
+dotnet add package Reqnroll.NUnit
+dotnet add package NunitXml.TestLogger
+```
+
+### Comandos
+
+| Comando | Acción |
+|---------|--------|
+| `/flaui:inventory` | Inventario de controles reales (AutomationId) de una pantalla |
+| `/flaui:generate` | Generar feature + steps + Window Object + tests desde un requerimiento |
+| `/flaui:window` | Generar o actualizar un Window Object |
+| `/flaui:from-pr` | Leer un PR y actualizar solo los tests impactados por el cambio |
+| `/flaui:trace` | Generar o actualizar la matriz de trazabilidad |
+| `/flaui:fix` | Analizar y reparar un test fallido |
+| `/flaui:ci` | Generar pipeline Azure Pipelines |
+| `/flaui:run` | Mostrar comando `dotnet test` correcto |
+| `/flaui:report` | Analizar resultados y generar el PDF ejecutivo |
+
+### Salidas
+
+`F_NOMBRE.feature` · `S_NOMBRE_Steps.cs` · `N_NOMBRE_Tests.cs` · `W_Nombre.cs` ·
+`MATRIZ_NOMBRE.md` · `Y_NOMBRE_flaui.yml` · `INFORME_UI_NOMBRE.pdf`
+
+### Informe PDF
+
+```bash
+pip install reportlab
+
+python reporter/flaui_report.py \
+  --results TestResult.xml \
+  --app-name "Sistema de Gestión" \
+  --environment "QA" \
+  --author "Nombre — email@empresa.com" \
+  --pr "123"
+```
+
+→ [Documentación completa](./flaui-skill/README.md)
+
+---
+
 ## Instalación completa del stack
 
 ```bash
@@ -306,6 +383,7 @@ npx skills add aiquaa-labs/postman-newman-skill
 npx skills add aiquaa-labs/hurl-skill
 npx skills add aiquaa-labs/playwright-skill
 npx skills add aiquaa-labs/jmeter-skill
+npx skills add aiquaa-labs/flaui-skill
 ```
 
 ---
@@ -325,9 +403,15 @@ Todas las skills usan el mismo sistema de prefijos:
 | `D_` | Datos CSV JMeter `.csv` | jmeter |
 | `R_` | Resultados JMeter `.jtl` | jmeter |
 | `Y_` | Pipeline CI `.yml` (Azure / GitHub) | todas |
+| `F_` | Feature Gherkin `.feature` | flaui |
+| `S_` | Step definitions `_Steps.cs` | flaui |
+| `N_` | Test NUnit puro `_Tests.cs` | flaui |
+| `W_` | Window Object `W_Nombre.cs` | flaui |
+| `MATRIZ_` | Matriz de trazabilidad `.md` | flaui |
 | `INFORME_DE_AUT_` | Informe PDF funcional | postman-newman |
 | `INFORME_E2E_` | Informe PDF ejecutivo E2E | playwright |
 | `INFORME_PERF_` | Informe PDF rendimiento | jmeter |
+| `INFORME_UI_` | Informe PDF con matriz de trazabilidad | flaui |
 
 ---
 
@@ -349,6 +433,7 @@ aiquaa-labs/
 ├── hurl-skill/              → Hurl — pruebas funcionales declarativas
 ├── playwright-skill/        → Playwright — E2E navegador + API TypeScript
 ├── jmeter-skill/            → JMeter — pruebas de rendimiento y estrés
+├── flaui-skill/             → FlaUI + Reqnroll + NUnit — escritorio C# (WinForms/WPF)
 └── README.md                → este archivo
 ```
 
