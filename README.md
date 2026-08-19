@@ -17,6 +17,7 @@ profesionales y pipelines CI listos para usar.
 | `hurl-skill` | Hurl | Funcional — declarativo, diff-friendly, CI-native | [→](./hurl-skill/README.md) |
 | `playwright-skill` | Playwright | E2E navegador + API — TypeScript, Page Objects | [→](./playwright-skill/README.md) |
 | `jmeter-skill` | Apache JMeter | Rendimiento y estrés — 30.000 req, percentiles | [→](./jmeter-skill/README.md) |
+| `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
 
 ---
 
@@ -27,6 +28,7 @@ profesionales y pipelines CI listos para usar.
 ¿Querés tests en texto plano que se revisen en PRs?             →  hurl-skill
 ¿Necesitás automatizar flujos en el navegador o E2E?            →  playwright-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?  →  jmeter-skill
+¿Necesitás probar objetos de BD sin conexión directa al motor?   →  database-object-testing-skill
 ```
 
 Las cuatro skills son complementarias — se pueden usar juntas en el mismo proyecto.
@@ -349,6 +351,7 @@ aiquaa-labs/
 ├── hurl-skill/              → Hurl — pruebas funcionales declarativas
 ├── playwright-skill/        → Playwright — E2E navegador + API TypeScript
 ├── jmeter-skill/            → JMeter — pruebas de rendimiento y estrés
+├── database-object-testing-skill/ → objetos de BD vía API REST
 └── README.md                → este archivo
 ```
 

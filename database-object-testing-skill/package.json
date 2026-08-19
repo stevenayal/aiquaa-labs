@@ -1,0 +1,21 @@
+{
+  "name": "@aiquaa/database-object-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas funcionales, diferencias y costos de objetos de bases de datos vía API REST.",
+  "bin": {
+    "db-object-test": "./src/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/cli.mjs && node --test",
+    "example:baseline": "node examples/mock-api.mjs --role baseline --port 4101",
+    "example:candidate": "node examples/mock-api.mjs --role candidate --port 4102",
+    "example:run": "node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
