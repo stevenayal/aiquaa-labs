@@ -1,17 +1,26 @@
 """
-jmeter_report.py v1 — Generador de reporte PDF para resultados de JMeter (.jtl)
+jmeter_report.py v2 — Generador de reporte PDF para resultados de JMeter (.jtl)
 Powered by skill jmeter · aiquaa.com
 
 Uso:
     python jmeter_report.py --results results/R_MI_API.jtl
-    python jmeter_report.py --results results/R_MI_API.jtl \\
+    python jmeter_report.py --results results/R_CARGA.jtl \\
         --output INFORME_PERF_MI_API.pdf \\
         --api-name "Mi API" \\
-        --threads 1000 \\
-        --loops 30 \\
+        --perfil carga \\
+        --threads 10 \\
+        --loops -1 \\
+        --baseline results/R_BASELINE.jtl \\
+        --sla-error-rate 2 \\
+        --sla-p95 800 \\
+        --sla-throughput 20 \\
         --author "Juan Pérez — juan@empresa.com" \\
         --repo-url "https://dev.azure.com/org/repo" \\
         --api-version "v1.2.0"
+
+v2: perfiles dinámicos (baseline/carga/estrés/pico/resistencia/escalabilidad) —
+SLA configurable por flag en vez de hardcodeado, y comparación opcional contra
+una corrida de línea base (--baseline).
 """
 
 import argparse
@@ -195,33 +204,65 @@ def parse_jtl(path: str) -> dict:
 
 
 # ─── Veredicto ────────────────────────────────────────────────────────────────
-def get_verdict(stats):
-    if stats["error_rate"] > 10:
+def get_verdict(stats, sla_error_rate=2.0, sla_p95=3000.0, sla_throughput=None):
+    """SLA configurable por flag (--sla-error-rate, --sla-p95, --sla-throughput).
+    > 5x el error rate del SLA (o > 10% absoluto) = colapso. Por encima del SLA
+    de p95, error rate, o throughput mínimo = degradación. Dentro de todo = pasa."""
+    collapse_threshold = max(sla_error_rate * 5, 10)
+    if stats["error_rate"] > collapse_threshold:
         return "COLAPSO BAJO ESTRÉS", "fail"
-    elif stats["error_rate"] > 2 or stats["p95"] > 3000:
+
+    degraded = stats["error_rate"] > sla_error_rate or stats["p95"] > sla_p95
+    if sla_throughput is not None and stats["throughput"] < sla_throughput:
+        degraded = True
+    if degraded:
         return "DEGRADACIÓN DETECTADA", "warn"
-    else:
-        return "API AGUANTA LA CARGA", "pass"
+    return "DENTRO DE SLA", "pass"
+
+
+def compare_baseline(stats, baseline_path):
+    """Compara stats contra un .jtl de línea base. Devuelve dict con % de cambio
+    en avg/p95/error_rate, o None si no se dio --baseline."""
+    if not baseline_path:
+        return None
+    base_stats, _, _ = parse_jtl(baseline_path)
+
+    def pct(current, base):
+        if base == 0:
+            return None
+        return round((current - base) / base * 100, 1)
+
+    return {
+        "base": base_stats,
+        "avg_pct": pct(stats["avg"], base_stats["avg"]),
+        "p95_pct": pct(stats["p95"], base_stats["p95"]),
+        "error_rate_pct": pct(stats["error_rate"], base_stats["error_rate"]),
+    }
 
 
 # ─── Portada ──────────────────────────────────────────────────────────────────
 def build_cover(stats, samplers, styles, api_name, threads, loops,
-                api_version=None, repo_url=None, author=None, banner=None):
+                api_version=None, repo_url=None, author=None, banner=None,
+                perfil=None, sla_error_rate=2.0, sla_p95=3000.0, sla_throughput=None,
+                baseline_cmp=None):
     story = []
     w_content = PAGE_W - 2 * MARGIN
 
+    subtitle = api_name if not perfil else f"{api_name} — perfil {perfil}"
     story.append(Spacer(1, 10 * mm))
     story.append(Paragraph("Informe de Prueba de Rendimiento", styles["title"]))
     story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(
-        f'<font color="#4A4A4A">{api_name}</font>', styles["subtitle"]))
+        f'<font color="#4A4A4A">{subtitle}</font>', styles["subtitle"]))
     story.append(Spacer(1, 4 * mm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=GRAY_BORDER))
     story.append(Spacer(1, 6 * mm))
 
     # ── Estadísticas principales ──────────────────────────────────────────────
+    # total real de la corrida (stats["total"]), no threads*loops — con loops=-1
+    # (perfiles por duración: carga, resistencia) esa cuenta no aplica.
     stat_col = w_content / 4
-    total_req = threads * loops
+    total_req = stats["total"]
 
     def stat_cell(num, label, color=GRAY_DARK):
         return [
@@ -279,7 +320,8 @@ def build_cover(stats, samplers, styles, api_name, threads, loops,
     story.append(Spacer(1, 6 * mm))
 
     # ── Veredicto ─────────────────────────────────────────────────────────────
-    verdict_text, verdict_type = get_verdict(stats)
+    verdict_text, verdict_type = get_verdict(
+        stats, sla_error_rate=sla_error_rate, sla_p95=sla_p95, sla_throughput=sla_throughput)
     verdict_style = {
         "pass": styles["verdict_pass"],
         "warn": styles["verdict_warn"],
@@ -298,14 +340,61 @@ def build_cover(stats, samplers, styles, api_name, threads, loops,
         ])
     )
     story.append(verdict_table)
+    story.append(Spacer(1, 3 * mm))
+
+    sla_parts = [f"error rate ≤ {sla_error_rate}%", f"p95 ≤ {sla_p95}ms"]
+    if sla_throughput is not None:
+        sla_parts.append(f"throughput ≥ {sla_throughput} req/seg")
+    story.append(Paragraph(
+        f'SLA evaluado: {" · ".join(sla_parts)}',
+        ParagraphStyle("sla", fontName="Helvetica", fontSize=8,
+                       textColor=GRAY_MID, alignment=TA_CENTER)))
     story.append(Spacer(1, 6 * mm))
 
+    # ── Comparación con línea base (si --baseline) ──────────────────────────
+    if baseline_cmp:
+        def fmt_pct(v):
+            if v is None:
+                return "n/a"
+            color = RED_FAIL if v > 0 else GREEN_PASS
+            sign = "+" if v > 0 else ""
+            return f'<font color="{color.hexval()}">{sign}{v}%</font>'
+
+        cmp_rows = [
+            ["Métrica", "Línea base", "Esta corrida", "Cambio"],
+            ["Avg (ms)", str(baseline_cmp["base"]["avg"]), str(stats["avg"]),
+             fmt_pct(baseline_cmp["avg_pct"])],
+            ["P95 (ms)", str(baseline_cmp["base"]["p95"]), str(stats["p95"]),
+             fmt_pct(baseline_cmp["p95_pct"])],
+            ["Error rate (%)", str(baseline_cmp["base"]["error_rate"]), str(stats["error_rate"]),
+             fmt_pct(baseline_cmp["error_rate_pct"])],
+        ]
+        cmp_table = Table(
+            [[Paragraph(f"<b>{c}</b>" if i == 0 else c, styles["body"]) for c in row]
+             for i, row in enumerate(cmp_rows)],
+            colWidths=[w_content * 0.30, w_content * 0.23, w_content * 0.23, w_content * 0.24],
+            style=TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), GRAY_LIGHT),
+                ("BOX", (0, 0), (-1, -1), 0.5, GRAY_BORDER),
+                ("INNERGRID", (0, 0), (-1, -1), 0.3, GRAY_BORDER),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ]),
+        )
+        story.append(Paragraph("Comparación con línea base", styles["section"]))
+        story.append(Spacer(1, 2 * mm))
+        story.append(cmp_table)
+        story.append(Spacer(1, 6 * mm))
+
     # ── Metadata ──────────────────────────────────────────────────────────────
+    loops_display = "hasta agotar duración (-1)" if loops == -1 else str(loops)
     meta = [
         ["Fecha / hora", datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        ["Perfil", perfil or "no especificado"],
         ["Threads (usuarios)", str(threads)],
-        ["Loops por thread", str(loops)],
-        ["Total requests", f"{threads * loops:,}"],
+        ["Loops por thread", loops_display],
+        ["Total requests (real)", f"{total_req:,}"],
         ["Duración real", f"{stats['duration_sec']} seg"],
     ]
     if api_version:
@@ -449,10 +538,13 @@ def build_sampler_detail(samplers, top_errors, styles):
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 def generate_report(results_path, output_path, api_name="API",
-                    threads=1000, loops=30,
+                    threads=1, loops=10, perfil=None,
                     api_version=None, repo_url=None,
-                    author=None, banner=None):
+                    author=None, banner=None,
+                    baseline_path=None,
+                    sla_error_rate=2.0, sla_p95=3000.0, sla_throughput=None):
     stats, samplers, top_errors = parse_jtl(results_path)
+    baseline_cmp = compare_baseline(stats, baseline_path)
 
     doc = SimpleDocTemplate(
         output_path, pagesize=A4,
@@ -467,38 +559,58 @@ def generate_report(results_path, output_path, api_name="API",
 
     story  = build_cover(stats, samplers, styles, api_name, threads, loops,
                          api_version=api_version, repo_url=repo_url,
-                         author=author, banner=banner)
+                         author=author, banner=banner, perfil=perfil,
+                         sla_error_rate=sla_error_rate, sla_p95=sla_p95,
+                         sla_throughput=sla_throughput, baseline_cmp=baseline_cmp)
     story += build_sampler_detail(samplers, top_errors, styles)
 
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
-    verdict_text, _ = get_verdict(stats)
+    verdict_text, _ = get_verdict(
+        stats, sla_error_rate=sla_error_rate, sla_p95=sla_p95, sla_throughput=sla_throughput)
     print(f"Reporte: {output_path}")
-    print(f"  Requests  : {threads * loops:,} ({threads} threads x {loops} loops)")
+    print(f"  Perfil    : {perfil or 'no especificado'}")
+    print(f"  Requests  : {stats['total']:,} (threads={threads}, loops={loops})")
     print(f"  Throughput: {stats['throughput']} req/seg")
     print(f"  Avg       : {stats['avg']} ms")
     print(f"  P95       : {stats['p95']} ms")
     print(f"  Error rate: {stats['error_rate']}%")
+    if baseline_cmp:
+        print(f"  vs baseline — avg: {baseline_cmp['avg_pct']}%  "
+              f"p95: {baseline_cmp['p95_pct']}%  "
+              f"error rate: {baseline_cmp['error_rate_pct']}%")
     print(f"  Veredicto : {verdict_text}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="JMeter PDF Report — aiquaa.com")
-    parser.add_argument("--results",     required=True, help="Archivo .jtl de JMeter")
-    parser.add_argument("--output",      default=None,  help="Nombre del PDF de salida")
-    parser.add_argument("--api-name",    default="API", help="Nombre de la API")
-    parser.add_argument("--threads",     type=int, default=1000, help="Threads usados")
-    parser.add_argument("--loops",       type=int, default=30,   help="Loops por thread")
-    parser.add_argument("--api-version", default=None, help="Versión de la API")
-    parser.add_argument("--repo-url",    default=None, help="URL del repositorio")
-    parser.add_argument("--author",      default=None, help="Autor de la prueba")
-    parser.add_argument("--banner",      default=None, help="Imagen de portada (opcional)")
+    parser.add_argument("--results",         required=True, help="Archivo .jtl de JMeter")
+    parser.add_argument("--output",          default=None,  help="Nombre del PDF de salida")
+    parser.add_argument("--api-name",        default="API", help="Nombre de la API")
+    parser.add_argument("--perfil",          default=None,
+                         help="baseline|carga|estres|pico|resistencia|escalabilidad")
+    parser.add_argument("--threads",         type=int, default=1, help="Threads usados")
+    parser.add_argument("--loops",           type=int, default=10,
+                         help="Loops por thread (-1 si el perfil corrió por duración)")
+    parser.add_argument("--baseline",        default=None,
+                         help="Archivo .jtl de una corrida baseline, para comparar")
+    parser.add_argument("--sla-error-rate",  type=float, default=2.0,
+                         help="Error rate máximo aceptable, %% (default 2)")
+    parser.add_argument("--sla-p95",         type=float, default=3000.0,
+                         help="P95 máximo aceptable, ms (default 3000)")
+    parser.add_argument("--sla-throughput",  type=float, default=None,
+                         help="Throughput mínimo aceptable, req/seg (opcional)")
+    parser.add_argument("--api-version",     default=None, help="Versión de la API")
+    parser.add_argument("--repo-url",        default=None, help="URL del repositorio")
+    parser.add_argument("--author",          default=None, help="Autor de la prueba")
+    parser.add_argument("--banner",          default=None, help="Imagen de portada (opcional)")
     args = parser.parse_args()
 
     output_path = args.output
     if not output_path:
         slug = re.sub(r"[^A-Z0-9]+", "_", args.api_name.upper()).strip("_")
-        output_path = f"INFORME_PERF_{slug}.pdf"
+        suffix = f"_{args.perfil.upper()}" if args.perfil else ""
+        output_path = f"INFORME_PERF_{slug}{suffix}.pdf"
 
     generate_report(
         results_path=args.results,
@@ -506,8 +618,13 @@ if __name__ == "__main__":
         api_name=args.api_name,
         threads=args.threads,
         loops=args.loops,
+        perfil=args.perfil,
         api_version=args.api_version,
         repo_url=args.repo_url,
         author=args.author,
         banner=args.banner,
+        baseline_path=args.baseline,
+        sla_error_rate=args.sla_error_rate,
+        sla_p95=args.sla_p95,
+        sla_throughput=args.sla_throughput,
     )

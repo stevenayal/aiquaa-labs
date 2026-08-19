@@ -1,6 +1,10 @@
 # Y_EXAMPLE_API_jmeter.yml
-# JMeter stress tests — Example API
+# JMeter performance tests — property-driven, perfil por variable de pipeline
 # Generado por skill jmeter · aiquaa.com
+#
+# Corre el perfil "carga" en cada push (rápido, no consume el rate limit del
+# sandbox de golpe). Perfiles estres/pico/resistencia/escalabilidad se corren
+# manualmente o en un pipeline aparte con aprobación — ver references/perfiles.md.
 
 trigger:
   branches:
@@ -13,12 +17,15 @@ pool:
 
 variables:
   jmeterVersion: '5.6.3'
-  planFile: 'examples/P_EXAMPLE_API.jmx'
-  csvFile: 'examples/D_EXAMPLE_API.csv'
+  planFile: 'examples/P_SANDBOX_API.jmx'
+  csvFile: 'examples/D_SANDBOX_API.csv'
   resultsDir: '$(Build.ArtifactStagingDirectory)/jmeter-results'
   dashboardDir: '$(Build.ArtifactStagingDirectory)/jmeter-dashboard'
-  threads: 1000
-  loops: 30
+  perfil: carga
+  threads: 10
+  rampup: 30
+  loops: -1
+  duration: 120
 
 steps:
 
@@ -39,26 +46,31 @@ steps:
   - script: |
       jmeter -n \
         -t $(planFile) \
-        -l $(resultsDir)/R_EXAMPLE_API.jtl \
+        -l $(resultsDir)/R_SANDBOX_API.jtl \
         -e -o $(dashboardDir) \
+        -Jperfil=$(perfil) \
         -Jthreads=$(threads) \
+        -Jrampup=$(rampup) \
         -Jloops=$(loops) \
-        -JcsvFile=$(csvFile) \
-        -JresultsFile=$(resultsDir)/R_EXAMPLE_API.jtl
-    displayName: Ejecutar prueba de estres JMeter
+        -Jduration=$(duration) \
+        -JcsvData=$(csvFile) \
+        -JresultsFile=$(resultsDir)/R_SANDBOX_API.jtl \
+        -JbaseUrl=$(baseUrl) \
+        -JapiKey=$(apiKey)
+    displayName: Ejecutar prueba de rendimiento JMeter — perfil $(perfil)
     continueOnError: true
-    env:
-      JMETER_baseUrl: $(baseUrl)
-      JMETER_token: $(token)
 
   - script: |
       pip install reportlab pandas --quiet
       python reporter/jmeter_report.py \
-        --results $(resultsDir)/R_EXAMPLE_API.jtl \
-        --output $(resultsDir)/INFORME_PERF_EXAMPLE_API.pdf \
-        --api-name "Example API" \
+        --results $(resultsDir)/R_SANDBOX_API.jtl \
+        --output $(resultsDir)/INFORME_PERF_SANDBOX_API.pdf \
+        --api-name "Sandbox API" \
+        --perfil $(perfil) \
         --threads $(threads) \
-        --loops $(loops)
+        --loops $(loops) \
+        --sla-error-rate 2 \
+        --sla-p95 800
     displayName: Generar informe PDF
     condition: always()
 

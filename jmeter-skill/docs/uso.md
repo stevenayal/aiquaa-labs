@@ -38,60 +38,64 @@ jmeter --version
 
 | Comando | Qué hace |
 |---------|----------|
-| `/jmeter:generate` | Genera `.jmx` desde spec, curl, código fuente o URL |
+| `/jmeter:generate` | Genera `.jmx` property-driven desde spec, curl, código fuente, URL o grupo del sandbox |
 | `/jmeter:csv` | Genera o actualiza archivo CSV de datos de prueba |
+| `/jmeter:perfil` | Calcula los valores `-J` de un perfil (carga/estrés/pico/resistencia/escalabilidad) |
 | `/jmeter:fix` | Analiza y repara plan fallido o resultado anómalo |
-| `/jmeter:ci` | Genera pipeline Azure Pipelines |
-| `/jmeter:run` | Muestra el comando de ejecución correcto |
-| `/jmeter:report` | Analiza `.jtl` y describe qué incluirá el PDF |
+| `/jmeter:ci` | Genera pipeline Azure Pipelines o GitHub Actions |
+| `/jmeter:run` | Muestra el comando de ejecución correcto para el perfil elegido |
+| `/jmeter:report` | Analiza `.jtl` y describe qué incluirá el PDF, con comparación a baseline si corresponde |
 
-La skill siempre pregunta antes de generar. En orden de prioridad:
-1. URL base de la API
+La skill siempre pregunta antes de generar. En orden de prioridad (ver `SKILL.md` para el
+detalle completo):
+1. URL base de la API (o número de grupo del sandbox)
 2. Endpoint(s) a estresar
-3. Configuración de carga (threads, loops, ramp-up)
-4. Autenticación (Bearer, API Key, Basic, ninguna)
-5. Body del request (para POST/PUT/PATCH)
-6. Datos variables — CSV o User Defined Variables
-7. Assertions (status code, response time, body)
-8. Listeners y métricas adicionales
-9. Metadata del informe (nombre, versión, repo, autor — opcionales)
+3. Perfil de carga (baseline/carga/estrés/pico/resistencia/escalabilidad) — ver `references/perfiles.md`
+4. Rate limit conocido (obligatorio si el sistema es el sandbox del curso)
+5. Autenticación (`x-api-key`, Bearer, API Key, Basic, ninguna)
+6. Body del request (para POST/PUT/PATCH)
+7. Datos variables — CSV, User Defined Variables, o funciones de generación única
+8. Correlación (si hay una secuencia de requests)
+9. Temporizadores y pacing (golpe instantáneo vs Constant Throughput Timer)
+10. Assertions y SLA (status, response time, body)
+11. Línea base para comparar (`.jtl` de una corrida `baseline` previa)
+12. Metadata del informe (nombre, versión, repo, autor — opcionales)
 
 ---
 
-## Escenario estándar aiquaa
+## Perfiles de carga — property-driven
 
-```
-Threads (usuarios):  1000
-Loops por thread:    30
-Total requests:      30.000
-Ramp-up:             0 segundos (golpe instantáneo)
-Think Time:          ninguno
-```
-
-Para modificar cualquier parámetro en tiempo de ejecución sin tocar el .jmx:
+Ya no hay un único escenario fijo. Un solo `.jmx` cubre los 5 tipos de prueba del temario
+PtU CPTJM más línea base — ver `references/perfiles.md` para valores y comandos de cada uno.
 
 ```bash
-jmeter -n -t P_MI_API.jmx -l R_MI_API.jtl \
-  -Jthreads=500 \
-  -Jloops=60 \
-  -JrampUp=30
+# baseline — referencia
+jmeter -n -t P_MI_API.jmx -l R_BASELINE.jtl -Jperfil=baseline -Jthreads=1 -Jrampup=0 -Jloops=10
+
+# carga — concurrencia esperada
+jmeter -n -t P_MI_API.jmx -l R_CARGA.jtl \
+  -Jperfil=carga -Jthreads=10 -Jrampup=30 -Jloops=-1 -Jduration=120
 ```
+
+`loops=-1` + `duration=N` = modo por tiempo (carga/resistencia). `loops=N` finito con
+`duration` grande (default) = modo por iteraciones (baseline/estrés). Ver `SKILL.md` sección
+Thread Group para el detalle de por qué ambos modos conviven en el mismo XML.
 
 ---
 
 ## Uso rápido — ejecución local
 
-### Correr el plan de ejemplo
+### Correr el plan de ejemplo contra el sandbox
 
 ```bash
 jmeter -n \
-  -t examples/P_EXAMPLE_API.jmx \
-  -l results/R_EXAMPLE_API.jtl \
+  -t examples/P_SANDBOX_API.jmx \
+  -l results/R_SANDBOX_API.jtl \
   -e -o results/dashboard/ \
-  -JbaseUrl=localhost \
-  -Jport=3000 \
-  -Jprotocol=http \
-  -JcsvFile=examples/D_EXAMPLE_API.csv
+  -JbaseUrl=aiquaa-sandbox-api.vercel.app -Jport=443 -Jprotocol=https \
+  -JapiKey=$SANDBOX_API_KEY \
+  -JcsvData=examples/D_SANDBOX_API.csv \
+  -Jperfil=carga -Jthreads=10 -Jrampup=30 -Jloops=-1 -Jduration=120
 ```
 
 ### Con más heap para 1000 threads
@@ -117,16 +121,20 @@ El archivo de datos se llama `D_NOMBRE_DE_API.csv`.
 Primera fila = headers. Los headers son los nombres de las variables en JMeter (`${variable}`).
 
 ```csv
-username,password,resource_id
-user001,pass001,uuid-001
-user002,pass002,uuid-002
+usuarioId,producto,precioUnitario
+1,Teclado,97.72
+2,Monitor,8.63
 ```
 
 Reglas:
-- Mínimo 1000 filas para 30.000 requests (JMeter recicla con `recycle=true`)
+- Filas suficientes para el perfil más largo (JMeter recicla con `recycle=true`, pero más
+  filas = menos repetición de combinaciones)
 - Sin comillas salvo que el valor contenga comas
 - Encoding UTF-8 sin BOM
 - Va en `tests/jmeter/data/D_MI_API.csv`
+- Campos con restricción `UNIQUE` en el sistema bajo prueba (ej. `usuarios.email` en el
+  sandbox) **no van fijos en el CSV** — generarlos con `${__UUID()}` en el body del sampler,
+  o el segundo loop sobre la misma fila da 400 `EXECUTION_ERROR`
 
 ---
 
@@ -142,21 +150,27 @@ pip install reportlab pandas
 
 ```bash
 python reporter/jmeter_report.py \
-  --results results/R_MI_API.jtl \
+  --results results/R_CARGA.jtl \
   --api-name "Mi API" \
-  --threads 1000 \
-  --loops 30
+  --perfil carga \
+  --threads 10 \
+  --loops -1
 ```
 
-### Uso completo
+### Uso completo — con SLA y comparación a línea base
 
 ```bash
 python reporter/jmeter_report.py \
-  --results  results/R_MI_API.jtl \
-  --output   results/INFORME_PERF_MI_API.pdf \
-  --api-name "Mi API" \
-  --threads  1000 \
-  --loops    30 \
+  --results   results/R_CARGA.jtl \
+  --output    results/INFORME_PERF_MI_API_CARGA.pdf \
+  --api-name  "Mi API" \
+  --perfil carga \
+  --threads   10 \
+  --loops     -1 \
+  --baseline  results/R_BASELINE.jtl \
+  --sla-error-rate 2 \
+  --sla-p95 800 \
+  --sla-throughput 20 \
   --api-version "v1.2.0" \
   --repo-url "https://dev.azure.com/org/repo" \
   --author   "Juan Pérez — juan@empresa.com"
@@ -164,12 +178,15 @@ python reporter/jmeter_report.py \
 
 ### Qué contiene el informe
 
-- Portada con estadísticas principales: total requests, throughput, avg response time, error rate
+- Portada con estadísticas reales de la corrida (total requests = filas del `.jtl`, no
+  `threads × loops` — ese producto no aplica en perfiles por duración)
 - Tabla de percentiles: mínimo, mediana, P90, P95, P99
-- Veredicto automático:
-  - `AGUANTA LA CARGA` → error rate ≤ 2% y P95 ≤ 3000ms
-  - `DEGRADACIÓN DETECTADA` → error rate > 2% o P95 > 3000ms
-  - `COLAPSO BAJO ESTRÉS` → error rate > 10%
+- **Comparación con línea base** (% de cambio en avg/p95/error rate) si se pasa `--baseline`
+- Veredicto automático, SLA configurable por flag:
+  - `DENTRO DE SLA` → error rate ≤ `--sla-error-rate` y P95 ≤ `--sla-p95` (y throughput ≥
+    `--sla-throughput` si se dio)
+  - `DEGRADACIÓN DETECTADA` → por encima de cualquiera de esos umbrales
+  - `COLAPSO BAJO ESTRÉS` → error rate > 5× el SLA (mínimo 10%)
 - Detalle por sampler: total, errores, error %, avg, P90, P95, max
 - Top 10 errores por sampler y código HTTP
 - Footer con autor y `Powered by skill jmeter · aiquaa.com`
@@ -186,17 +203,21 @@ El pipeline estándar (`Y_*_jmeter.yml`) incluye:
 4. Generación de informe PDF (`jmeter_report.py`) con `condition: always()`
 5. Upload de artefactos (JTL + PDF + dashboard)
 
-Variables sensibles se pasan como secrets de Azure:
+Variables sensibles se pasan como secrets de Azure/GitHub — nunca como `-J` en texto plano
+en el propio YAML si el pipeline es público:
 ```yaml
 env:
-  JMETER_token: $(token)      # secret en Pipeline > Variables
-  JMETER_api_key: $(apiKey)
+  SANDBOX_API_KEY: $(apiKey)      # secret en Pipeline > Variables
 ```
 
 En el .jmx se leen como:
 ```xml
-<stringProp name="Argument.value">${__P(token,)}</stringProp>
+<stringProp name="Argument.value">${__P(apiKey,)}</stringProp>
 ```
+
+El perfil también se parametriza por variable de pipeline (`perfil: carga` en
+`Y_EXAMPLE_API_jmeter.yml`) — correr `carga` en cada push, reservar `estrés`/`resistencia`/
+`escalabilidad` para un job manual o con aprobación.
 
 ---
 
@@ -221,9 +242,12 @@ azure-pipelines/
 
 | Necesidad | Skill |
 |-----------|-------|
+| Contrato del entorno de práctica del curso | `sandbox-skill` |
 | Pruebas funcionales con GUI Postman | `postman-newman-skill` |
 | Pruebas funcionales declarativas, CI-native | `hurl-skill` |
-| Pruebas de rendimiento y estrés | `jmeter-skill` |
+| Pruebas E2E de navegador + API | `playwright-skill` |
+| BDD — Gherkin + Cucumber | `bdd-skill` |
+| Pruebas de rendimiento — carga, estrés, pico, resistencia, escalabilidad | `jmeter-skill` |
 
 ---
 

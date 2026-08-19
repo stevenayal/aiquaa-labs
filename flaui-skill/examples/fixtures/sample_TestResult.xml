@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="5" result="Failed" total="5" passed="3" failed="1" skipped="1"
+          duration="12.834" start-time="2026-08-18T10:00:00Z" end-time="2026-08-18T10:00:13Z">
+  <test-suite type="Assembly" name="MiApp.UiTests.dll" result="Failed">
+    <test-suite type="TestFixture" name="LoginFeature" result="Failed">
+
+      <test-case name="Login_con_credenciales_validas" fullname="MiApp.UiTests.LoginFeature.Login_con_credenciales_validas"
+                 result="Passed" duration="2.104">
+        <properties>
+          <property name="Category" value="RF-001" />
+        </properties>
+      </test-case>
+
+      <test-case name="Login_con_clave_incorrecta_muestra_error" fullname="MiApp.UiTests.LoginFeature.Login_con_clave_incorrecta_muestra_error"
+                 result="Failed" duration="3.512">
+        <properties>
+          <property name="Category" value="RF-002" />
+        </properties>
+        <failure>
+          <message><![CDATA[Expected element with AutomationId 'lblError' to be visible, but it was not found within 5000ms.]]></message>
+          <stack-trace><![CDATA[at MiApp.UiTests.Windows.LoginWindow.get_MensajeError() in LoginWindow.cs:line 42
+at MiApp.UiTests.Steps.LoginSteps.EntoncesVeoElMensajeDeError() in LoginSteps.cs:line 31]]></stack-trace>
+        </failure>
+        <attachments>
+          <attachment>
+            <filePath>screenshots/no-existe-en-este-fixture.png</filePath>
+          </attachment>
+        </attachments>
+      </test-case>
+
+      <test-case name="Login_recuerda_usuario_si_check_esta_marcado" fullname="MiApp.UiTests.LoginFeature.Login_recuerda_usuario_si_check_esta_marcado"
+                 result="Passed" duration="1.998">
+        <properties>
+          <property name="ReqId" value="RF-003" />
+        </properties>
+      </test-case>
+
+      <test-case name="Login_boton_deshabilitado_con_campos_vacios" fullname="MiApp.UiTests.LoginFeature.Login_boton_deshabilitado_con_campos_vacios"
+                 result="Skipped" duration="0.0">
+        <properties>
+          <property name="ReqId" value="RF-003" />
+        </properties>
+        <reason>
+          <message>Pendiente de datos de prueba</message>
+        </reason>
+      </test-case>
+
+      <test-case name="Smoke_la_app_levanta_y_muestra_la_ventana_principal"
+                 fullname="MiApp.UiTests.LoginFeature.Smoke_la_app_levanta_y_muestra_la_ventana_principal"
+                 result="Passed" duration="5.220">
+      </test-case>
+
+      <test-case name="Login_bloquea_cuenta_tras_3_intentos_fallidos"
+                 fullname="MiApp.UiTests.LoginFeature.Login_bloquea_cuenta_tras_3_intentos_fallidos"
+                 result="Skipped" duration="0.0">
+        <properties>
+          <property name="ReqId" value="RF-004" />
+        </properties>
+        <reason>
+          <message>No implementado aún — RF-004 sin cobertura</message>
+        </reason>
+      </test-case>
+
+    </test-suite>
+  </test-suite>
+</test-run>
