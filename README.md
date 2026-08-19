@@ -40,6 +40,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?           →  jmeter-skill
 ¿Automatizás pantallas de escritorio C# (WinForms/WPF)?                  →  flaui-skill
 ¿Necesitás probar objetos de BD sin conexión directa al motor?           →  database-object-testing-skill
+¿Cambió una columna core y necesitás conocer SP/packages afectados?      →  assess-database-column-impact
 ¿Los requisitos llegaron como PDF, foto o captura de pantalla?           →  ocr-bdd-skill
 ¿Ya automatizaste y necesitás entregar por PR?                           →  course-pr-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill

@@ -28,6 +28,20 @@ function markdown(report) {
     `- Casos: ${report.summary.total}; aprobados: ${report.summary.passed}; fallidos: ${report.summary.failed}`, '',
     '| Caso | Objeto | Estado | Hallazgos |', '|---|---|---:|---:|'
   ];
+  if (report.impact) {
+    const target = report.impact.target;
+    lines.push(
+      '## Mapa de impacto', '',
+      `- Columna core: ${target.schema}.${target.table}.${target.column}`,
+      `- Cambio: ${report.impact.change.fromLength} → ${report.impact.change.toLength} ${report.impact.change.lengthSemantics ?? 'CHAR'}`,
+      `- Dependencias: ${report.impact.dependencies.length}`, '',
+      '| Objeto dependiente | Tipo | Operaciones | Invocaciones |', '|---|---|---|---:|'
+    );
+    for (const dependency of report.impact.dependencies) {
+      lines.push(`| ${dependency.object.schema}.${dependency.object.name} | ${dependency.object.type} | ${dependency.operations.join(', ')} | ${dependency.invocations.length} |`);
+    }
+    lines.push('');
+  }
   for (const item of report.cases) {
     const failures = item.findings.filter((finding) => !finding.passed).length;
     lines.push(`| ${item.id} | ${item.objectType} | ${item.status} | ${failures} |`);

@@ -53,6 +53,10 @@ El gateway define cómo obtiene el plan en cada motor. No ejecutar el objeto si 
 
 `inspect` permite aplicar reglas estáticas. Restringir qué esquemas y objetos pueden inspeccionarse.
 
+## Dependencies
+
+`POST /v1/database/dependencies` descubre objetos que leen o escriben una tabla o columna y entrega invocaciones reproducibles para pruebas de impacto. La skill especializada `assess-database-column-impact` documenta el contrato completo.
+
 ## Errores
 
 Usar un código HTTP no exitoso y una respuesta sin secretos:

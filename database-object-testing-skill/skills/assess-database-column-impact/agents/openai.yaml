@@ -1,0 +1,4 @@
+interface:
+  display_name: "Impacto de cambios en columnas"
+  short_description: "Evalúa dependencias y cambios de longitud"
+  default_prompt: "Usa $assess-database-column-impact para analizar el impacto de ampliar una columna core sobre SP y packages dependientes."

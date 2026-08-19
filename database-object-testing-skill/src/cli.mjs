@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { readJson } from './json.mjs';
+import { analyzeColumnImpact } from './impact-analysis.mjs';
 import { generatePdfReport } from './pdf-report.mjs';
 import { writeReports } from './reporters.mjs';
 import { loadRules } from './rules.mjs';
@@ -24,9 +25,21 @@ async function main() {
     console.log(`Reglas válidas: ${rules.length}`);
     return;
   }
+  if (command === 'impact') {
+    if (!options.change) throw new Error('Uso: db-object-test impact --change <impact.json> [--output results] [--python <ruta>]');
+    const specification = await readJson(resolve(options.change));
+    const report = await analyzeColumnImpact(specification);
+    const paths = await writeReports(report, resolve(options.output ?? 'results'));
+    await generatePdfReport({ inputPath: paths.json, outputPath: paths.pdf, python: options.python });
+    console.log(`PDF: ${paths.pdf}`);
+    console.log(`${report.status.toUpperCase()}: ${report.summary.passed}/${report.summary.total} casos de impacto aprobados`);
+    process.exitCode = report.status === 'passed' ? 0 : 1;
+    return;
+  }
   if (command !== 'run' || !options.suite) {
     console.error('Uso: db-object-test run --suite <suite.json> [--rules rules] [--output results] [--python <ruta>]');
     console.error('     db-object-test validate-rules --rules <directorio>');
+    console.error('     db-object-test impact --change <impact.json> [--output results] [--python <ruta>]');
     process.exitCode = 2;
     return;
   }
