@@ -1,0 +1,79 @@
+# Y_NOMBRE_flaui.yml
+# FlaUI UI tests — NOMBRE APP
+# Generado por skill flaui · aiquaa.com
+#
+# IMPORTANTE: la automatización de escritorio (WinForms/WPF) requiere una sesión
+# de Windows INTERACTIVA — UIAutomation no funciona sobre una sesión de servicio
+# ni en un contenedor headless. Usar un agente self-hosted Windows configurado
+# para correr de forma interactiva (auto-logon + "Run as interactive process" en
+# el servicio del agente), NO el pool hosted "windows-latest".
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  name: 'Default'          # pool self-hosted con agente Windows interactivo
+  demands:
+    - Agent.OS -equals Windows_NT
+
+variables:
+  buildConfiguration: 'Release'
+  resultsDir: '$(Build.ArtifactStagingDirectory)/flaui-results'
+
+steps:
+
+  - task: UseDotNet@2
+    inputs:
+      packageType: sdk
+      version: '8.0.x'
+    displayName: Instalar .NET SDK
+
+  - script: dotnet restore
+    displayName: Restaurar dependencias NuGet
+
+  - script: dotnet build --configuration $(buildConfiguration) --no-restore
+    displayName: Compilar (genera code-behind de Reqnroll desde los .feature)
+
+  - script: mkdir "$(resultsDir)"
+    displayName: Crear directorio de resultados
+
+  - script: |
+      dotnet test --configuration $(buildConfiguration) --no-build ^
+        --logger "nunit;LogFilePath=$(resultsDir)\TestResult.xml" ^
+        --logger "console;verbosity=normal"
+    displayName: Ejecutar tests FlaUI
+    continueOnError: true
+    env:
+      APP_EXE_PATH:  $(appExePath)
+      TEST_USER:     $(testUser)
+      TEST_PASSWORD: $(testPassword)
+
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: NUnit
+      testResultsFiles: '$(resultsDir)\TestResult.xml'
+      testRunTitle: 'FlaUI UI Tests — NOMBRE APP'
+      failTaskOnFailedTests: true
+    displayName: Publicar en Azure Test Plans
+
+  - script: |
+      pip install reportlab --quiet
+      python reporter/flaui_report.py ^
+        --results     "$(resultsDir)\TestResult.xml" ^
+        --output      "$(resultsDir)\INFORME_UI_NOMBRE.pdf" ^
+        --app-name    "NOMBRE APP" ^
+        --environment "QA" ^
+        --pr          "$(System.PullRequest.PullRequestId)"
+    displayName: Generar informe PDF con matriz de trazabilidad
+    condition: always()
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: $(Build.ArtifactStagingDirectory)
+      artifactName: flaui-results
+    displayName: Subir artefactos (PDF + screenshots + XML)

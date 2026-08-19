@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Resultados de tests UI
+results/
+TestResult.xml
+screenshots/
+TestResults/
+*.original.md
+
+# Build .NET
+bin/
+obj/
+*.user
+
+# Reqnroll generado
+*.feature.cs
+LivingDoc.html
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+.vs/
+*.swp

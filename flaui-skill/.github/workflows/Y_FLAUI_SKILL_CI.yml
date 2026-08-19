@@ -1,0 +1,60 @@
+name: CI — flaui-skill
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate analyzer syntax
+        run: python -m py_compile analyzer/ui_inventory.py && echo "analyzer syntax OK"
+
+      - name: Run analyzer against fixtures
+        run: |
+          python analyzer/ui_inventory.py --src examples/fixtures --format json > /tmp/inventory.json
+          python -c "
+          import json
+          data = json.load(open('/tmp/inventory.json', encoding='utf-8'))
+          assert len(data) == 2, f'esperaba 2 pantallas, salieron {len(data)}'
+          screens = {d['screen'] for d in data}
+          assert screens == {'LoginForm', 'LoginWindow'}, screens
+          for d in data:
+              fields = {c['field'] for c in d['controls']}
+              assert {'txtUsuario', 'txtClave', 'btnIngresar'} <= fields, f'{d[\"screen\"]}: {fields}'
+          print('analyzer fixtures OK —', screens)
+          "
+
+      - name: Install reporter deps
+        run: pip install reportlab --quiet && echo "deps OK"
+
+      - name: Smoke test reporter against NUnit3 fixture
+        run: |
+          python reporter/flaui_report.py \
+            --results examples/fixtures/sample_TestResult.xml \
+            --output /tmp/INFORME_UI_TEST.pdf \
+            --app-name "CI Smoke Test"
+          test -f /tmp/INFORME_UI_TEST.pdf && echo "PDF generado OK"
+
+      - name: Validate pipeline YML
+        run: |
+          pip install pyyaml --quiet
+          python -c "import yaml; yaml.safe_load(open('examples/Y_EXAMPLE_flaui.yml')); print('Y_ OK')"
+
+      - name: Validate .feature syntax (basic)
+        run: |
+          python -c "
+          text = open('examples/F_EXAMPLE_LOGIN.feature', encoding='utf-8').read()
+          assert 'Característica:' in text or 'Feature:' in text
+          assert '@RF-001' in text
+          print('feature OK')
+          "
