@@ -1,0 +1,37 @@
+{
+  "name": "package-customer-status",
+  "targets": {
+    "baseline": {
+      "baseUrlEnv": "DBTEST_BASELINE_URL",
+      "tokenEnv": "DBTEST_API_TOKEN"
+    },
+    "candidate": {
+      "baseUrlEnv": "DBTEST_CANDIDATE_URL",
+      "tokenEnv": "DBTEST_API_TOKEN"
+    }
+  },
+  "cases": [
+    {
+      "id": "PKG-CUSTOMER-001",
+      "objectType": "package",
+      "request": {
+        "object": { "schema": "CRM", "name": "PKG_CUSTOMER.GET_STATUS" },
+        "objectType": "package",
+        "operation": "execute",
+        "arguments": { "customerId": 42 },
+        "transactionMode": "rollback"
+      },
+      "assertions": [
+        { "path": "$.data.out.status", "operator": "equals", "expected": "ACTIVE" },
+        { "path": "$.data.rowCount", "operator": "equals", "expected": 1 }
+      ],
+      "compare": {
+        "functional": { "paths": ["$.data"], "unorderedRows": true },
+        "cost": {
+          "metrics": ["$.cost", "$.logicalReads"],
+          "thresholds": { "$.cost": 10, "$.logicalReads": 15 }
+        }
+      }
+    }
+  ]
+}
