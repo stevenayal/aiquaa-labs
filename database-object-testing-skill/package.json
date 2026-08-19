@@ -12,7 +12,8 @@
     "check": "node --check src/cli.mjs && node --test",
     "example:baseline": "node examples/mock-api.mjs --role baseline --port 4101",
     "example:candidate": "node examples/mock-api.mjs --role candidate --port 4102",
-    "example:run": "node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results"
+    "example:run": "node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results",
+    "report:deps": "python -m pip install -r reporter/requirements.txt"
   },
   "engines": {
     "node": ">=20"

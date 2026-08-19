@@ -40,7 +40,7 @@ test('ejecuta assertions, diff, costos y reglas vía API', async (context) => {
   assert.equal(report.status, 'passed');
   assert.equal(report.summary.passed, 1);
   assert.equal('responses' in report.cases[0], false);
-  assert.equal('baseline' in report.cases[0].findings.find((finding) => finding.category === 'cost'), false);
+  assert.equal('baseline' in report.cases[0].findings.find((finding) => finding.category === 'cost'), true);
   assert.ok(report.cases[0].findings.some((finding) => finding.category === 'cost'));
   assert.ok(report.cases[0].findings.some((finding) => finding.category === 'rule'));
 });

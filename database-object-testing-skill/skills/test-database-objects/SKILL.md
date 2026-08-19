@@ -28,6 +28,7 @@ node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output resu
 ```
 
 7. Informar el veredicto, diferencias funcionales, regresiones de costo, reglas incumplidas y evidencia. No presentar una estimación de costo como medición real si la API no devolvió métricas.
+8. Verificar que se hayan generado `db-test-report.pdf`, JSON, Markdown y JUnit. Instalar `reporter/requirements.txt` si falta ReportLab. Inspeccionar visualmente el PDF antes de entregarlo.
 
 ## Criterios de diseño
 

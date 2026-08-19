@@ -11,13 +11,17 @@ No requiere un driver Oracle ni acceso directo a la base de datos. El gateway RE
 - Comparación funcional base/candidato, con filas sin orden.
 - Umbrales porcentuales para costo, lecturas y otras métricas normalizadas.
 - Reglas humanas y ejecutables en `rules/*.md`.
-- Informes JSON, Markdown y JUnit para CI.
+- Informes PDF, JSON, Markdown y JUnit para CI.
 - Token, URLs y datos sensibles desde variables de entorno.
 - Respuestas y valores de evidencia omitidos de los informes por defecto.
 
 ## Inicio rápido
 
-Requiere Node.js 20 o posterior. No hay dependencias para instalar.
+Requiere Node.js 20 o posterior. El runner no tiene dependencias npm. Para generar el PDF, instalar ReportLab:
+
+```bash
+npm run report:deps
+```
 
 En dos terminales:
 
@@ -35,7 +39,7 @@ $env:DBTEST_API_TOKEN='local-example-token'
 npm run example:run
 ```
 
-Los artefactos aparecen en `results/`.
+Los artefactos aparecen en `results/`, incluido `db-test-report.pdf`.
 
 ## Estructura
 
@@ -44,6 +48,7 @@ database-object-testing-skill/
 ├── skills/test-database-objects/  skill instalable y referencias
 ├── src/                            runner Node.js
 ├── rules/                          reglas y buenas prácticas .md
+├── reporter/                       generador del informe PDF
 ├── examples/                       suite y API simulada
 └── test/                           pruebas del runner
 ```
@@ -61,5 +66,7 @@ node src/cli.mjs validate-rules --rules rules
 node src/cli.mjs run --suite examples/S_EXAMPLE.json --rules rules --output results
 npm test
 ```
+
+Si Python no está disponible en el `PATH`, usar `--python <ruta>` o definir `DBTEST_PYTHON`.
 
 La ejecución termina con código `0` si todo pasa, `1` si hay fallos y `2` ante configuración inválida.

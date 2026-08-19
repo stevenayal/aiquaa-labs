@@ -15,6 +15,7 @@ export async function runSuite(suite, options = {}) {
   return {
     schemaVersion: 1,
     suite: suite.name,
+    metadata: suite.metadata ?? {},
     generatedAt: new Date().toISOString(),
     status: passed === results.length ? 'passed' : 'failed',
     summary: { total: results.length, passed, failed: results.length - passed },
@@ -56,9 +57,13 @@ async function runCase(testCase, suite, clients, rules, env) {
     findings.push({ category: 'execution', passed: false, message: error.message, details: error.details });
   }
   const failed = findings.some((finding) => !finding.passed && (finding.category !== 'rule' || finding.severity === 'error'));
-  const reportedFindings = suite.reporting?.includeEvidence
-    ? findings
-    : findings.map(({ actual, expected, baseline, candidate, details, ...finding }) => finding);
+  const reportedFindings = findings.map((finding) => {
+    if (suite.reporting?.includeEvidence) return finding;
+    const { actual, expected, details, ...safeFinding } = finding;
+    if (finding.category === 'cost') return safeFinding;
+    const { baseline, candidate, ...withoutComparedData } = safeFinding;
+    return withoutComparedData;
+  });
   return {
     id: testCase.id,
     objectType: testCase.objectType,

@@ -2,6 +2,8 @@
 
 Una suite JSON contiene `name`, `targets` y `cases`. Cada target usa nombres de variables de entorno; nunca secretos literales.
 
+Puede incluir `metadata.environment`, `metadata.version`, `metadata.author` y `metadata.repoUrl`; estos campos aparecen en el informe PDF.
+
 ```json
 {
   "name": "customer-package",

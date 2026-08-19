@@ -7,11 +7,18 @@ function escapeXml(value) {
 
 export async function writeReports(report, outputDirectory) {
   await mkdir(outputDirectory, { recursive: true });
+  const paths = {
+    json: join(outputDirectory, 'db-test-report.json'),
+    markdown: join(outputDirectory, 'db-test-report.md'),
+    junit: join(outputDirectory, 'db-test-junit.xml'),
+    pdf: join(outputDirectory, 'db-test-report.pdf')
+  };
   await Promise.all([
-    writeFile(join(outputDirectory, 'db-test-report.json'), `${JSON.stringify(report, null, 2)}\n`),
-    writeFile(join(outputDirectory, 'db-test-report.md'), markdown(report)),
-    writeFile(join(outputDirectory, 'db-test-junit.xml'), junit(report))
+    writeFile(paths.json, `${JSON.stringify(report, null, 2)}\n`),
+    writeFile(paths.markdown, markdown(report)),
+    writeFile(paths.junit, junit(report))
   ]);
+  return paths;
 }
 
 function markdown(report) {
