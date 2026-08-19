@@ -25,6 +25,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
 | `ocr-bdd-skill` | visión / pdftotext / tesseract | Documento → requisitos → BDD | [→](./ocr-bdd-skill/README.md) |
 | `course-pr-skill` | `gh` / `az repos` | Entrega semanal vía Pull Request | [→](./course-pr-skill/README.md) |
+| `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
 
 ---
 
@@ -41,6 +42,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Necesitás probar objetos de BD sin conexión directa al motor?           →  database-object-testing-skill
 ¿Los requisitos llegaron como PDF, foto o captura de pantalla?           →  ocr-bdd-skill
 ¿Ya automatizaste y necesitás entregar por PR?                           →  course-pr-skill
+¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
 ```
 
 Todas son complementarias — se usan juntas en el mismo proyecto. `sandbox-skill` es la base
@@ -514,6 +516,23 @@ npx skills add aiquaa-labs/sandbox-skill
 
 ---
 
+## token-optimization-skill
+
+Criterio de herramienta y compresión de salida para sesiones largas — cuándo preferir
+`codegraph` (búsqueda estructural) a `grep`, cuándo consultar `engram` (memoria persistente)
+antes de re-explorar, y cuándo activar `caveman` (salida comprimida). No genera archivos, no
+instala ni configura servidores MCP, y degrada con gracia si no están disponibles.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/token-optimization-skill
+```
+
+→ [Documentación completa](./token-optimization-skill/README.md)
+
+---
+
 ## Instalación completa del stack
 
 ```bash
@@ -527,6 +546,7 @@ npx skills add aiquaa-labs/flaui-skill
 npx skills add aiquaa-labs/database-object-testing-skill
 npx skills add aiquaa-labs/ocr-bdd-skill
 npx skills add aiquaa-labs/course-pr-skill
+npx skills add aiquaa-labs/token-optimization-skill
 ```
 
 ---
@@ -596,6 +616,7 @@ aiquaa-labs/
 ├── database-object-testing-skill/  → Node.js + API REST — objetos de BD relacional
 ├── ocr-bdd-skill/                  → documento → requisitos → BDD
 ├── course-pr-skill/                → entrega semanal vía Pull Request
+├── token-optimization-skill/       → criterio de herramienta y compresión — ahorro de tokens
 └── README.md                       → este archivo
 ```
 
