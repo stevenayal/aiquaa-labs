@@ -18,6 +18,7 @@ profesionales y pipelines CI listos para usar.
 | `playwright-skill` | Playwright | E2E navegador + API — TypeScript, Page Objects | [→](./playwright-skill/README.md) |
 | `jmeter-skill` | Apache JMeter | Rendimiento y estrés — 30.000 req, percentiles | [→](./jmeter-skill/README.md) |
 | `flaui-skill` | FlaUI + Reqnroll + NUnit | Funcional — escritorio C# (WinForms/WPF), BDD + trazabilidad | [→](./flaui-skill/README.md) |
+| `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
 
 ---
 
@@ -29,9 +30,10 @@ profesionales y pipelines CI listos para usar.
 ¿Necesitás automatizar flujos en el navegador o E2E?            →  playwright-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?  →  jmeter-skill
 ¿Automatizás pantallas de escritorio C# (WinForms/WPF)?         →  flaui-skill
+¿Necesitás probar objetos de BD sin conexión directa al motor?  →  database-object-testing-skill
 ```
 
-Las cinco skills son complementarias — se pueden usar juntas en el mismo proyecto.
+Las seis skills son complementarias — se pueden usar juntas en el mismo proyecto.
 
 ---
 
@@ -434,6 +436,7 @@ aiquaa-labs/
 ├── playwright-skill/        → Playwright — E2E navegador + API TypeScript
 ├── jmeter-skill/            → JMeter — pruebas de rendimiento y estrés
 ├── flaui-skill/             → FlaUI + Reqnroll + NUnit — escritorio C# (WinForms/WPF)
+├── database-object-testing-skill/ → Node.js + API REST — objetos de BD relacional
 └── README.md                → este archivo
 ```
 
