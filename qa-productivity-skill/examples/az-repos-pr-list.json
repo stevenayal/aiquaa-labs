@@ -1,0 +1,59 @@
+{
+  "_comment": "Fixture simulado de: az repos pr list --creator <email> --status completed --min-time 2026-07-01. Nota: 4102 (H_ConsultarSaldo) figura Automated en Test Plans pero NO tiene PR asociado aqui -- caso 'marcado automatizado sin PR vinculado'.",
+  "pullRequests": [
+    {
+      "pullRequestId": 8801,
+      "title": "Automatiza TC-4101 crear pago API (hurl + verificacion BD)",
+      "createdBy": { "uniqueName": "ana.torres@bancocontinental.com" },
+      "creationDate": "2026-07-04T10:00:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-api" },
+      "relatedTestCaseIds": [4101]
+    },
+    {
+      "pullRequestId": 8802,
+      "title": "Automatiza TC-4103 actualizar limite tarjeta (hurl, status only)",
+      "createdBy": { "uniqueName": "carlos.ruiz@bancocontinental.com" },
+      "creationDate": "2026-07-06T09:00:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-api" },
+      "relatedTestCaseIds": [4103]
+    },
+    {
+      "pullRequestId": 8803,
+      "title": "Automatiza TC-4104 login portal web (playwright, body + BD)",
+      "createdBy": { "uniqueName": "marina.lopez@bancocontinental.com" },
+      "creationDate": "2026-07-09T08:30:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-web" },
+      "relatedTestCaseIds": [4104]
+    },
+    {
+      "pullRequestId": 8804,
+      "title": "Automatiza TC-4106 cambio de clave portal (playwright, status only)",
+      "createdBy": { "uniqueName": "marina.lopez@bancocontinental.com" },
+      "creationDate": "2026-07-15T11:00:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-web" },
+      "relatedTestCaseIds": [4106]
+    },
+    {
+      "pullRequestId": 8805,
+      "title": "Automatiza TC-4109 reversa de pago (hurl, jsonpath + BD)",
+      "createdBy": { "uniqueName": "carlos.ruiz@bancocontinental.com" },
+      "creationDate": "2026-07-19T14:00:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-api" },
+      "relatedTestCaseIds": [4109]
+    },
+    {
+      "pullRequestId": 8806,
+      "title": "Automatiza TC-4110 descarga estado de cuenta (playwright, body + BD)",
+      "createdBy": { "uniqueName": "ana.torres@bancocontinental.com" },
+      "creationDate": "2026-07-21T09:15:00Z",
+      "status": "completed",
+      "repository": { "name": "qa-automation-web" },
+      "relatedTestCaseIds": [4110]
+    }
+  ]
+}

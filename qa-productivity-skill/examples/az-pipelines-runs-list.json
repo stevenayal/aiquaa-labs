@@ -1,0 +1,12 @@
+{
+  "_comment": "Fixture simulado de: az pipelines runs list --pipeline-ids 42 --top 50 (pipeline 'qa-automation-nightly', ultimas corridas de julio 2026, usado como insumo para cruzar contra Test Runs/Results)",
+  "runs": [
+    { "id": 9001, "pipelineId": 42, "result": "succeeded", "createdDate": "2026-07-05T02:00:00Z", "finishedDate": "2026-07-05T02:14:00Z" },
+    { "id": 9002, "pipelineId": 42, "result": "succeeded", "createdDate": "2026-07-08T02:00:00Z", "finishedDate": "2026-07-08T02:15:00Z" },
+    { "id": 9003, "pipelineId": 42, "result": "failed", "createdDate": "2026-07-11T02:00:00Z", "finishedDate": "2026-07-11T02:16:00Z" },
+    { "id": 9004, "pipelineId": 42, "result": "succeeded", "createdDate": "2026-07-14T02:00:00Z", "finishedDate": "2026-07-14T02:13:00Z" },
+    { "id": 9005, "pipelineId": 42, "result": "succeeded", "createdDate": "2026-07-17T02:00:00Z", "finishedDate": "2026-07-17T02:15:00Z" },
+    { "id": 9006, "pipelineId": 42, "result": "failed", "createdDate": "2026-07-20T02:00:00Z", "finishedDate": "2026-07-20T02:17:00Z" },
+    { "id": 9007, "pipelineId": 42, "result": "succeeded", "createdDate": "2026-07-23T02:00:00Z", "finishedDate": "2026-07-23T02:14:00Z" }
+  ]
+}
