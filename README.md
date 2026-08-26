@@ -26,6 +26,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `ocr-bdd-skill` | visión / pdftotext / tesseract | Documento → requisitos → BDD | [→](./ocr-bdd-skill/README.md) |
 | `course-pr-skill` | `gh` / `az repos` | Entrega semanal vía Pull Request | [→](./course-pr-skill/README.md) |
 | `qa-orchestrator-skill` | — | Ruteo — decide qué skill(s) usar desde un PR y/o historia, orquesta y consolida resultados | [→](./qa-orchestrator-skill/README.md) |
+| `qa-productivity-skill` | Azure CLI (`az boards`/`repos`/`pipelines`/`devops invoke`) | Métricas — productividad y calidad real de automatización (API/Web) desde Azure DevOps | [→](./qa-productivity-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
 
 ---
@@ -45,6 +46,8 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Los requisitos llegaron como PDF, foto o captura de pantalla?           →  ocr-bdd-skill
 ¿Ya automatizaste y necesitás entregar por PR?                           →  course-pr-skill
 ¿Tenés un PR y/o una historia y no sabés qué skill(s) usar?              →  qa-orchestrator-skill
+¿Necesitás medir productividad/calidad real de automatización (no solo
+cantidad) en Azure DevOps?                                               →  qa-productivity-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
 ```
 
@@ -561,6 +564,47 @@ invocada
 
 ---
 
+## qa-productivity-skill
+
+**Fuente:** Azure DevOps (Test Plans, Pipelines, Pull Requests) vía Azure CLI
+**Entrada:** organización/proyecto de Azure DevOps, convención de filtro API/Web (Area Path o
+Tags), período
+**Salida:** informe de productividad/calidad de automatización por persona y equipo, con % real
+y % de calidad siempre separados (nunca promediados)
+
+Mide si la automatización que el equipo entrega es real, no solo cantidad: filtra a lo que hoy
+es técnicamente automatizable (API/Web), cruza evidencia de ejecución en pipeline, aplica una
+heurística de profundidad de validación (¿valida solo `HTTP 200` o el resultado real de
+negocio?) sobre el diff del PR, y calcula estabilidad (flakiness) sobre el historial de
+corridas. De solo lectura — nunca escribe en Azure DevOps. Corre en modo real (`az login`) o en
+modo ejemplo, contra fixtures simulados, sin credenciales. Trae también los dos diagramas de
+flujo (adopción de IA en QA, SDD con QA integrado) usados para explicar el objetivo de negocio
+detrás de estas métricas.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/qa-productivity-skill
+```
+
+### Comandos
+
+| Comando | Acción |
+|---------|--------|
+| `/productividad:configurar` | Intake — org, proyecto, convención de filtro API/Web, período |
+| `/productividad:extraer` | Corre (o lee fixtures) los `az`/`az devops invoke` de las 5 métricas |
+| `/productividad:auditar-profundidad` | Heurística superficial-vs-profunda sobre los PRs del período |
+| `/productividad:consolidar` | Agrega las 5 métricas por persona/equipo en el informe final |
+| `/productividad:completo` | Flujo completo `configurar → extraer → auditar-profundidad → consolidar` |
+
+### Salidas
+
+`INFORME_PRODUCTIVIDAD_NOMBRE.md`
+
+→ [Documentación completa](./qa-productivity-skill/README.md)
+
+---
+
 ## token-optimization-skill
 
 Criterio de herramienta y compresión de salida para sesiones largas — cuándo preferir
@@ -592,6 +636,7 @@ npx skills add aiquaa-labs/database-object-testing-skill
 npx skills add aiquaa-labs/ocr-bdd-skill
 npx skills add aiquaa-labs/course-pr-skill
 npx skills add aiquaa-labs/qa-orchestrator-skill
+npx skills add aiquaa-labs/qa-productivity-skill
 npx skills add aiquaa-labs/token-optimization-skill
 ```
 
@@ -625,6 +670,7 @@ Todas las skills usan el mismo sistema de prefijos:
 | `INFORME_UI_` | Informe PDF con matriz de trazabilidad | flaui |
 | `BITACORA_` | Bitácora de decisión de ruteo `.md` | qa-orchestrator |
 | `INFORME_CONSOLIDADO_` | Informe agregado multi-skill `.md` | qa-orchestrator |
+| `INFORME_PRODUCTIVIDAD_` | Informe de productividad/calidad de automatización desde Azure DevOps `.md` | qa-productivity |
 
 ---
 
@@ -666,6 +712,7 @@ aiquaa-labs/
 ├── ocr-bdd-skill/                  → documento → requisitos → BDD
 ├── course-pr-skill/                → entrega semanal vía Pull Request
 ├── qa-orchestrator-skill/          → ruteo — decide y orquesta qué skill(s) usar desde un PR/historia
+├── qa-productivity-skill/          → métricas de productividad/calidad real de automatización desde Azure DevOps
 ├── token-optimization-skill/       → criterio de herramienta y compresión — ahorro de tokens
 └── README.md                       → este archivo
 ```

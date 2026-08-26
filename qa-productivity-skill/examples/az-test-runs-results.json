@@ -1,0 +1,42 @@
+{
+  "_comment": "Fixture simulado de: az devops invoke --area test --resource results --route-parameters project=<project> runId=<runId> --api-version 7.1 --http-method GET, consolidado por automatedTestName a traves de los runs 9001-9007 de az-pipelines-runs-list.json. H_ConsultarSaldo.hurl y T_DescargarEstadoCuenta.spec.ts NO aparecen en ningun run -- son los casos 'sin evidencia de ejecucion' del ejemplo.",
+  "resultsByTest": {
+    "T_CrearPago.spec.ts::crea pago y verifica estado en BD": [
+      { "runId": 9001, "outcome": "Passed" },
+      { "runId": 9002, "outcome": "Passed" },
+      { "runId": 9003, "outcome": "Passed" },
+      { "runId": 9004, "outcome": "Passed" },
+      { "runId": 9005, "outcome": "Passed" }
+    ],
+    "H_ActualizarLimite.hurl::actualizar limite": [
+      { "runId": 9001, "outcome": "Passed" },
+      { "runId": 9002, "outcome": "Passed" },
+      { "runId": 9003, "outcome": "Passed" },
+      { "runId": 9004, "outcome": "Passed" },
+      { "runId": 9005, "outcome": "Passed" },
+      { "runId": 9006, "outcome": "Passed" }
+    ],
+    "T_LoginPortal.spec.ts::login exitoso": [
+      { "runId": 9001, "outcome": "Passed" },
+      { "runId": 9002, "outcome": "Passed" },
+      { "runId": 9003, "outcome": "Passed" },
+      { "runId": 9004, "outcome": "Passed" },
+      { "runId": 9005, "outcome": "Passed" },
+      { "runId": 9006, "outcome": "Passed" },
+      { "runId": 9007, "outcome": "Passed" }
+    ],
+    "T_CambioClave.spec.ts::cambia clave": [
+      { "runId": 9002, "outcome": "Passed" },
+      { "runId": 9003, "outcome": "Failed" },
+      { "runId": 9004, "outcome": "Passed" },
+      { "runId": 9005, "outcome": "Failed" },
+      { "runId": 9006, "outcome": "Passed" },
+      { "runId": 9007, "outcome": "Failed" }
+    ],
+    "H_ReversaPago.hurl::reversa de pago": [
+      { "runId": 9005, "outcome": "Passed" },
+      { "runId": 9006, "outcome": "Passed" },
+      { "runId": 9007, "outcome": "Passed" }
+    ]
+  }
+}

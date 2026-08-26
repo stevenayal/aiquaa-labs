@@ -1,0 +1,32 @@
+name: qa-productivity-skill-ci
+on:
+  push:
+    paths: ['qa-productivity-skill/**']
+  pull_request:
+    paths: ['qa-productivity-skill/**']
+jobs:
+  lint-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar que existan los archivos clave
+        run: |
+          test -f qa-productivity-skill/skills/qa-productivity/SKILL.md
+          test -f qa-productivity-skill/references/metrics-spec.md
+          test -f qa-productivity-skill/references/api-web-filter-convention.md
+          test -f qa-productivity-skill/references/validation-depth-heuristics.md
+          test -f qa-productivity-skill/references/productivity-report-schema.md
+          test -f qa-productivity-skill/references/diagrama-adopcion-ia-qa.md
+          test -f qa-productivity-skill/references/diagrama-sdd-qa-integrado.md
+          test -f qa-productivity-skill/examples/az-boards-query-testcases.json
+          test -f qa-productivity-skill/examples/az-repos-pr-list.json
+          test -f qa-productivity-skill/examples/az-pipelines-runs-list.json
+          test -f qa-productivity-skill/examples/az-test-runs-results.json
+          test -f qa-productivity-skill/examples/az-git-pr-diff-shallow.md
+          test -f qa-productivity-skill/examples/az-git-pr-diff-profundo.md
+          test -f qa-productivity-skill/examples/INFORME_PRODUCTIVIDAD_EJEMPLO.md
+      - name: Validar JSON de los fixtures
+        run: |
+          for f in qa-productivity-skill/examples/*.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+          done
