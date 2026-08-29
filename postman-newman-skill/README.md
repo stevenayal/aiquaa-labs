@@ -11,6 +11,7 @@ Skill para Claude Code, Cursor, Windsurf y 40+ agentes de IA. Genera colecciones
 | Componente | Qué hace |
 |------------|----------|
 | `skills/postman-newman` | Skill principal — genera colecciones, tests, CI pipelines |
+| `skills/postman-newman/references/sql-prerequest-pattern.md` | Patrón SQL REST dinámico — pre-request + post-response validando la base de datos, con helper reutilizable y casos negativos |
 | `skills/caveman` | Modo comprimido — reduce tokens ~75% sin perder precisión técnica |
 | `skills/caveman-review` | Code review en una línea por hallazgo |
 | `skills/caveman-commit` | Mensajes de commit Conventional Commits, sin ruido |

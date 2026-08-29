@@ -33,6 +33,11 @@ La skill principal. Se activa automáticamente cuando mencionás Postman, Newman
 | `/postman:env` | Crea o actualiza environment file |
 | `/postman:run` | Corre colección con Newman y reporta resultados |
 
+**Verificación en base de datos:** cuando la API bajo prueba es el sandbox del curso
+(`aiquaa-sandbox-api`), la skill cierra el ciclo acción → verificación consultando
+`POST /api/v1/sql/select`. Patrón completo (helper reutilizable + campo dinámico +
+caso negativo) en `skills/postman-newman/references/sql-prerequest-pattern.md`.
+
 **La skill siempre pregunta antes de generar.** En orden de prioridad:
 1. URL base de la API
 2. Endpoints y métodos

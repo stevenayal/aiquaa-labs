@@ -344,7 +344,12 @@ When the API under test is the course sandbox (`aiquaa-sandbox-api`), close the
 whitelist, `rowCount`). Only use this pattern against APIs that expose an equivalent
 SQL endpoint — don't assume it exists elsewhere.
 
-### Pattern — create, then verify in DB
+Two levels. Pick based on what the request actually needs.
+
+### Simple — one-off verify, no variants
+
+Two separate collection items chained via environment variable. Fine for a single
+check with no negative case.
 
 ```javascript
 // Request 1 — POST /api/v1/ordenes
@@ -368,6 +373,60 @@ pm.test("monto persisted matches API response", () => {
   pm.expect(persisted).to.equal(Number(pm.environment.get("montoEsperado")));
 });
 ```
+
+### Full pattern — SQL REST dinámico (pre-request + post-response)
+
+Use when the endpoint needs a happy path **and** at least one negative/edge case, or
+when more than one request in the collection hits `/api/v1/sql/select` — the reusable
+helper stops the same 10-line `pm.sendRequest` block from being copy-pasted everywhere.
+Two ideas: (1) declare a `utils.bodySqlRest(sql, params)` helper **once**, in the
+**collection's** Pre-request Script; (2) only the field(s) that vary between cases are
+`{{variable}}` — never the whole body serialized into one variable.
+
+```javascript
+// Collection-level Pre-request Script — runs before EVERY request.
+if (typeof utils === "undefined") {
+  utils = {
+    bodySqlRest: (sql, params) => ({
+      url: pm.collectionVariables.get("baseUrl") + "/api/v1/sql/select",
+      method: "POST",
+      header: {
+        "Content-Type": "application/json",
+        "x-api-key": pm.collectionVariables.get("apiKey"),
+      },
+      body: { mode: "raw", raw: JSON.stringify({ sql, params: params || [] }) },
+    }),
+  };
+}
+pm.collectionVariables.set("monto", 25000); // one line per field that can vary
+```
+
+Body: `{ "monto": {{monto}}, ... }` — number placeholders unquoted, string placeholders
+quoted.
+
+Request-level Pre-request (negative case — override ONE variable, everything else
+keeps its default):
+
+```javascript
+pm.collectionVariables.set("monto", -500);
+const request = utils.bodySqlRest("SELECT COUNT(*) AS total FROM transferencias");
+pm.sendRequest(request, (err, res) => pm.variables.set("totalAntes", res.json().data[0].total));
+```
+
+Tests (post-response — assert rejection, then confirm nothing landed in the DB):
+
+```javascript
+pm.test("status 400", () => pm.response.to.have.status(400));
+const request = utils.bodySqlRest("SELECT COUNT(*) AS total FROM transferencias");
+pm.sendRequest(request, (err, res) => {
+  pm.test("no row inserted", () => {
+    pm.expect(Number(res.json().data[0].total)).to.eql(Number(pm.variables.get("totalAntes")));
+  });
+});
+```
+
+Full worked example (happy path + 2 negative cases, plus the precondition-check side of
+the pre-request) → `references/sql-prerequest-pattern.md`.
 
 ### Case that must fail — table whitelist
 
