@@ -132,6 +132,7 @@ python reporter/newman_report.py \
   --api-version  "v1.2.0" \
   --repo-url     "https://github.com/org/repo" \
   --author       "Nombre Apellido — email@dominio.com" \
+  --run-url      "https://github.com/org/repo/actions/runs/123456789" \
   --output       "INFORME_DE_AUT_MI_API.pdf"
 ```
 
@@ -139,10 +140,18 @@ Si no pasás `--output`, el nombre se genera automáticamente desde el nombre de
 
 Si elegís anónimo, omitís `--author`.
 
+`--run-url` es opcional — pensado para pasar la URL del run de CI que generó el informe
+(en GitHub Actions: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`).
+Combinado con `--author "${{ github.triggering_actor }}"` deja registrado en la portada quién
+disparó la ejecución y el link directo al run.
+
 ### Qué contiene el informe
 
-- Portada con banner, estadísticas (peticiones / pruebas / aprobadas / fallidas), fecha, duración, versión, repo y autor
-- Detalle por petición: método, URL, HTTP status, tiempo de respuesta, resultado de cada prueba, cuerpo de respuesta
+- Portada con banner, estadísticas (peticiones / pruebas / aprobadas / fallidas), fecha, hora,
+  tiempo de ejecución, versión, repo, ejecutado por y link al run de CI
+- Detalle por petición: método, URL completa (reconstruida aunque Newman no exporte `url.raw`),
+  HTTP status, tiempo de respuesta, resultado de cada prueba, cuerpo de respuesta (con campos
+  anidados tipo `error.details` parseados e indentados, no como string escapado)
 - Header con logos Postman + aiquaa en todas las páginas internas
 - Footer con autor y `Powered by skill postman-newman · aiquaa.com`
 
