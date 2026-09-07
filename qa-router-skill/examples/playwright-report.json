@@ -1,0 +1,27 @@
+{
+  "config": { "rootDir": "/repo/e2e" },
+  "stats": { "expected": 8, "unexpected": 2, "flaky": 1, "skipped": 0, "duration": 45210 },
+  "suites": [
+    { "title": "pagos.spec.ts", "file": "e2e/pagos.spec.ts",
+      "suites": [
+        { "title": "Flujo de pago",
+          "specs": [
+            { "title": "crea un pago y lo verifica en BD", "file": "e2e/pagos.spec.ts", "line": 14,
+              "tests": [ { "status": "expected", "results": [ { "status": "passed" } ] } ] },
+            { "title": "rechaza pago sin saldo", "file": "e2e/pagos.spec.ts", "line": 32,
+              "tests": [ { "status": "unexpected", "results": [
+                { "status": "failed", "error": { "message": "locator.click: Timeout 5000ms exceeded.\nwaiting for getByTestId('btn-confirmar')", "location": { "file": "e2e/pagos.spec.ts", "line": 38 } } },
+                { "status": "failed", "error": { "message": "locator.click: Timeout 5000ms exceeded.\nwaiting for getByTestId('btn-confirmar')", "location": { "file": "e2e/pagos.spec.ts", "line": 38 } } }
+              ] } ] }
+          ] } ] },
+    { "title": "login.spec.ts", "file": "e2e/login.spec.ts",
+      "specs": [
+        { "title": "login exitoso", "file": "e2e/login.spec.ts", "line": 9,
+          "tests": [ { "status": "flaky", "results": [ { "status": "failed" }, { "status": "passed" } ] } ] },
+        { "title": "login con clave incorrecta", "file": "e2e/login.spec.ts", "line": 21,
+          "tests": [ { "status": "unexpected", "results": [
+            { "status": "failed", "error": { "message": "expect(received).toBeVisible() — element not found: [data-testid=\"error-msg\"]", "location": { "file": "e2e/login.spec.ts", "line": 27 } } }
+          ] } ] }
+      ] }
+  ]
+}

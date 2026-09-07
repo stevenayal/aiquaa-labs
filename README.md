@@ -28,6 +28,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `qa-orchestrator-skill` | — | Ruteo — decide qué skill(s) usar desde un PR y/o historia, orquesta y consolida resultados | [→](./qa-orchestrator-skill/README.md) |
 | `qa-productivity-skill` | Azure CLI (`az boards`/`repos`/`pipelines`/`devops invoke`) | Métricas — productividad y calidad real de automatización (API/Web) desde Azure DevOps | [→](./qa-productivity-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
+| `qa-router-skill` | Python stdlib / bash / subagentes nativos | Ruteo por costo — digiere artefactos pesados (.jtl, Newman, JUnit, Playwright, .jmx, diffs) antes de que entren al contexto | [→](./qa-router-skill/README.md) |
 
 ---
 
@@ -49,12 +50,16 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Necesitás medir productividad/calidad real de automatización (no solo
 cantidad) en Azure DevOps?                                               →  qa-productivity-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
+¿Vas a leer un .jtl, un JSON de Newman o cualquier resultado de
+corrida pesado?                                                          →  qa-router-skill
 ```
 
 Todas son complementarias — se usan juntas en el mismo proyecto. `sandbox-skill` es la base
 de contexto que las demás consultan para no inventar endpoints, campos ni tablas.
 `qa-orchestrator-skill` no reemplaza a ninguna — decide cuál(es) de las anteriores aplican a
 un cambio concreto y las orquesta.
+`qa-router-skill` tampoco compite: decide *quién ejecuta y a qué costo* cada lectura, y digiere
+los artefactos de resultados antes de que entren al contexto del modelo.
 
 ---
 

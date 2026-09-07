@@ -1,8 +1,9 @@
 # Relevamiento — Router de consumo para QA (patrón "shunt" de Spotify Portal, sin proveedores externos)
 
-> Estado: **propuesta de diseño**. No hay código implementado todavía — este documento releva
-> la estrategia del artículo, la traduce al stack `aiquaa-labs`, y define qué skills y agentes
-> construir. Fecha: 2026-09-07.
+> Estado: **implementado** en [`qa-router-skill/`](../qa-router-skill/README.md) (fases 1–4 del
+> plan de §9; falta la fase 5: `qa-code-writer` en uso real y el baseline on/off publicado).
+> Este documento releva la estrategia del artículo, la traduce al stack `aiquaa-labs`, y define
+> qué skills y agentes construir. Fecha: 2026-09-07.
 
 ---
 

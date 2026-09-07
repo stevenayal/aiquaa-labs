@@ -1,0 +1,41 @@
+{
+  "collection": { "info": { "name": "C_PAGOS_API" } },
+  "run": {
+    "stats": {
+      "requests":   { "total": 12, "failed": 3 },
+      "assertions": { "total": 31, "failed": 5 }
+    },
+    "timings": { "started": 0, "completed": 12420 },
+    "executions": [
+      { "item": { "name": "GET /payments — listar" },
+        "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/payments" } },
+        "response": { "code": 200, "responseTime": 142 },
+        "assertions": [ { "assertion": "status is 200" }, { "assertion": "body is array" } ] },
+      { "item": { "name": "POST /payments — crear" },
+        "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/v1/payments" } },
+        "response": { "code": 422, "responseTime": 210 },
+        "assertions": [
+          { "assertion": "status is 201",
+            "error": { "name": "AssertionError", "message": "expected response to have status code 201 but got 422" } },
+          { "assertion": "body has id",
+            "error": { "name": "AssertionError", "message": "expected undefined to have property 'id'" } }
+        ] },
+      { "item": { "name": "GET /payments/{id} — detalle" },
+        "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/payments/{{paymentId}}" } },
+        "response": { "code": 404, "responseTime": 98 },
+        "assertions": [
+          { "assertion": "status is 200",
+            "error": { "name": "AssertionError", "message": "expected response to have status code 200 but got 404" } }
+        ] },
+      { "item": { "name": "POST /sql/select — verificar en BD" },
+        "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/api/v1/sql/select" } },
+        "response": { "code": 200, "responseTime": 1240 },
+        "assertions": [
+          { "assertion": "rowCount is 1",
+            "error": { "name": "AssertionError", "message": "expected 0 to equal 1" } },
+          { "assertion": "p95 under 800ms",
+            "error": { "name": "AssertionError", "message": "expected 1240 to be below 800" } }
+        ] }
+    ]
+  }
+}

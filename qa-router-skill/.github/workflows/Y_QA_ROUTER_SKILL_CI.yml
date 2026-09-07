@@ -1,0 +1,34 @@
+name: qa-router-skill-ci
+on:
+  push:
+    paths: ['qa-router-skill/**']
+  pull_request:
+    paths: ['qa-router-skill/**']
+jobs:
+  extractores:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verificar que existan los archivos clave
+        run: |
+          test -f qa-router-skill/skills/qa-router/SKILL.md
+          test -f qa-router-skill/references/routing-policy.md
+          test -f qa-router-skill/references/digest-contracts.md
+          test -f qa-router-skill/references/hooks-setup.md
+          test -f qa-router-skill/references/cost-ledger-schema.md
+          test -f qa-router-skill/hooks/qa-router-guard.sh
+          test -f qa-router-skill/hooks/settings.example.json
+          for a in qa-bulk-reader qa-code-writer qa-log-triage qa-diff-scout; do
+            test -f "qa-router-skill/agents/$a.md"
+          done
+      - name: Sintaxis de los extractores
+        run: |
+          python3 -m compileall -q qa-router-skill/extractors
+          bash -n qa-router-skill/extractors/diff_digest.sh
+          bash -n qa-router-skill/hooks/qa-router-guard.sh
+          python3 -c "import json;json.load(open('qa-router-skill/hooks/settings.example.json'))"
+      - name: Suite de extractores, dispatcher, guard y ledger
+        run: bash qa-router-skill/test/test_extractors.sh

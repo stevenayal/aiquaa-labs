@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="newman" tests="12" failures="3" errors="0" time="12.420">
+  <testsuite name="C_PAGOS_API / 01 - Pagos" tests="6" failures="2" errors="0" time="6.100" skipped="0">
+    <testcase name="GET /payments — listar / status is 200" classname="01 - Pagos" time="0.142"/>
+    <testcase name="POST /payments — crear / status is 201" classname="01 - Pagos" time="0.210">
+      <failure type="AssertionError" message="expected response to have status code 201 but got 422">at assertion:0 in test-script</failure>
+    </testcase>
+    <testcase name="POST /payments — crear / body has id" classname="01 - Pagos" time="0.210">
+      <failure type="AssertionError" message="expected undefined to have property 'id'">at assertion:1 in test-script</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="C_PAGOS_API / 02 - BD" tests="6" failures="1" errors="0" time="6.320" skipped="1">
+    <testcase name="POST /sql/select / rowCount is 1" classname="02 - BD" time="1.240">
+      <failure type="AssertionError" message="expected 0 to equal 1">at assertion:0 in test-script</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
