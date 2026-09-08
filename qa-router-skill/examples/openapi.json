@@ -1,0 +1,19 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "aiquaa sandbox API", "version": "1.0.0" },
+  "paths": {
+    "/api/v1/auth/login": { "post": { "tags": ["auth"], "summary": "Login con x-api-key",
+      "requestBody": {}, "responses": { "200": {}, "401": {} } } },
+    "/api/v1/payments": {
+      "get": { "tags": ["pagos"], "summary": "Listar pagos", "responses": { "200": {} } },
+      "post": { "tags": ["pagos"], "summary": "Crear pago", "requestBody": {},
+        "responses": { "201": {}, "422": {} } } },
+    "/api/v1/payments/{id}": { "get": { "tags": ["pagos"], "summary": "Detalle de pago",
+      "parameters": [ { "name": "id", "in": "path", "required": true } ],
+      "responses": { "200": {}, "404": {} } } },
+    "/api/v1/sql/select": { "post": { "tags": ["bd"], "summary": "Verificación en base de datos",
+      "requestBody": {}, "responses": { "200": {} } } }
+  },
+  "components": { "schemas": {
+    "Payment": { "properties": { "id": {}, "amount": {}, "status": {}, "createdAt": {} } } } }
+}
