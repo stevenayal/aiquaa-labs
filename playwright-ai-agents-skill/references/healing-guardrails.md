@@ -43,6 +43,18 @@ expect(balance).toBe(850_000);
 
 Salida correcta: `HUMAN_REVIEW_REQUIRED — expected de negocio (saldo) difiere; posible PRODUCT_BUG`.
 
+## Permisos por capa — arquitectura Cucumber + BDD + POM
+
+| Capa | Healer |
+|---|---|
+| `features/*.feature` | **nunca** — es la especificación de negocio |
+| `steps/` — `Then` con `expect` de valor | **nunca** |
+| `steps/` — glue (qué método PO se invoca) | solo `TEST_BUG/high`, sin cambiar la expresión Cucumber |
+| `support/world.ts`, `support/hooks.ts` | fixture técnico |
+| `pages/` | **sí** — locators, esperas, navegación |
+
+Detalle: `references/bdd-pom-architecture.md`.
+
 ## Chequeo mecánico del diff propuesto
 
 Antes de presentar el diff, rechazarlo (→ `HUMAN_REVIEW_REQUIRED`) si alguna línea `-`/`+`:
@@ -51,7 +63,8 @@ Antes de presentar el diff, rechazarlo (→ `HUMAN_REVIEW_REQUIRED`) si alguna l
   `toBeCloseTo`, `toBeGreaterThan*`, `toBeLessThan*`, `toHaveLength`) — salvo que el cambio sea
   solo el locator dentro de `expect(locator)`;
 - cambia un literal numérico dentro de un `expect`;
-- modifica archivos fuera de `tests/`, `pages/`, `fixtures/` (p. ej. `src/`, `data/`, `.env*`);
+- modifica archivos fuera de `tests/`, `pages/`, `fixtures/`, `steps/`, `support/` (p. ej. `src/`, `data/`, `.env*`);
+- toca cualquier `*.feature`, o cambia la expresión de un `Given/When/Then(...)` en `steps/`;
 - elimina un `expect` o un `test(...)` completo, o agrega `test.skip` / `test.fixme`;
 - sube timeouts por encima del valor de `playwright.config.ts` sin causa en el error.
 

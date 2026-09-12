@@ -1,6 +1,7 @@
 # Taxonomía de fallos — Failure Classifier
 
 Fuente de verdad de las reglas que implementa `scripts/classify-failures.mjs` (array `RULES`).
+Aplica igual al reporter JSON de Playwright Test y al formatter JSON de cucumber-js.
 Toda regla nueva se agrega **primero en el script**, después se documenta acá con la misma
 posición y el mismo `id`.
 
@@ -28,17 +29,19 @@ decidir a quién derivar.
 
 | # | `id` | Categoría | Confianza | Coincide con (resumen del regex) |
 |---|---|---|---|---|
-| 1 | `network-error` | NETWORK | high | `net::ERR_`, `ECONNREFUSED`, `ECONNRESET`, `ENOTFOUND`, `EAI_AGAIN`, `socket hang up` |
-| 2 | `browser-or-runner-setup` | ENVIRONMENT | high | `Executable doesn't exist`, `browserType.launch`, `Error reading storage state`, `ENOENT …/.auth`, `Missing required env var` |
-| 3 | `navigation-timeout` | ENVIRONMENT | medium | `page.goto: Timeout Nms exceeded` |
-| 4 | `http-gateway-error` | ENVIRONMENT | medium | `Expected: 1xx–4xx` + `Received: 502/503/504` |
-| 5 | `http-5xx` | PRODUCT_BUG | medium | `Expected: 1xx–4xx` + `Received: 5xx`, `Internal Server Error` |
-| 6 | `data-conflict` | DATA | medium | `Expected: 2xx` + `Received: 409`, `duplicate key`, `already exists`, `unique constraint`, `insufficient test data`, `seed data missing` |
-| 7 | `locator-not-found` | TEST_BUG | **high** | `strict mode violation`, `locator.<acción>: Timeout Nms exceeded`, `element(s) not found`, `element is not attached to the DOM` |
-| 8 | `element-state-sync` | TEST_BUG | medium | `Expected: visible/enabled/editable/checked` + `Received: hidden/disabled/readonly/unchecked`, `outside of the viewport` |
-| 9 | `ui-text-changed` | TEST_BUG | medium | `.toHaveText(`, `.toContainText(`, `.toHaveValue(`, `.toHaveTitle(`, `.toHaveURL(` |
-| 10 | `business-value-mismatch` | PRODUCT_BUG | medium | `expect(received).toBe/toEqual/toStrictEqual/toBeCloseTo/toBeGreaterThan/toBeLessThan(` |
-| 11 | `test-timeout` | UNKNOWN | medium | `Test timeout of Nms exceeded` |
+| 1 | `step-undefined-or-pending` | TEST_BUG | medium | mensaje sintetizado `Undefined step:` / `Pending step:` (solo cucumber) |
+| 2 | `step-ambiguous` | TEST_BUG | medium | `Ambiguous step:` sintetizado, `Multiple step definitions match` (solo cucumber) |
+| 3 | `network-error` | NETWORK | high | `net::ERR_`, `ECONNREFUSED`, `ECONNRESET`, `ENOTFOUND`, `EAI_AGAIN`, `socket hang up` |
+| 4 | `browser-or-runner-setup` | ENVIRONMENT | high | `Executable doesn't exist`, `browserType.launch`, `Error reading storage state`, `ENOENT …/.auth`, `Missing required env var` |
+| 5 | `navigation-timeout` | ENVIRONMENT | medium | `page.goto: Timeout Nms exceeded` |
+| 6 | `http-gateway-error` | ENVIRONMENT | medium | `Expected: 1xx–4xx` + `Received: 502/503/504` |
+| 7 | `http-5xx` | PRODUCT_BUG | medium | `Expected: 1xx–4xx` + `Received: 5xx`, `Internal Server Error` |
+| 8 | `data-conflict` | DATA | medium | `Expected: 2xx` + `Received: 409`, `duplicate key`, `already exists`, `unique constraint`, `insufficient test data`, `seed data missing` |
+| 9 | `locator-not-found` | TEST_BUG | **high** | `strict mode violation`, `locator.<acción>: Timeout Nms exceeded`, `element(s) not found`, `element is not attached to the DOM` |
+| 10 | `element-state-sync` | TEST_BUG | medium | `Expected: visible/enabled/editable/checked` + `Received: hidden/disabled/readonly/unchecked`, `outside of the viewport` |
+| 11 | `ui-text-changed` | TEST_BUG | medium | `.toHaveText(`, `.toContainText(`, `.toHaveValue(`, `.toHaveTitle(`, `.toHaveURL(` |
+| 12 | `business-value-mismatch` | PRODUCT_BUG | medium | `expect(received).toBe/toEqual/toStrictEqual/toBeCloseTo/toBeGreaterThan/toBeLessThan(` |
+| 13 | `test-timeout` | UNKNOWN | medium | `Test timeout of Nms exceeded`, cucumber `function timed out, ensure the promise resolves within N milliseconds` |
 | — | (fallback) | UNKNOWN | low | nada coincidió |
 
 ## Decisiones de diseño no obvias
@@ -62,6 +65,22 @@ decidir a quién derivar.
 - **Exit code 0** con input válido: el gate de CI es `PublishTestResults@2
   failTaskOnFailedTests`, no el classifier.
 
+## Formatos de entrada
+
+| Formato | Detección | Unidad clasificada | Mensaje usado |
+|---|---|---|---|
+| Playwright Test JSON reporter | objeto con `suites` | test × project, último intento | `results[-1].error.message` |
+| cucumber-js JSON formatter | array raíz | escenario (se ignoran `background`) | primer step con estado distinto de `passed`/`skipped` |
+
+Cucumber: `undefined`, `ambiguous` y `pending` no traen mensaje útil, así que el script
+antepone `Undefined step: <keyword><texto>` (o `Ambiguous step:` / `Pending step:`) y las reglas
+1–2 siguen siendo regex sobre texto. Cada fallo lleva además `step` con el texto del step y
+`project: "cucumber"`. El JSON de cucumber no distingue flaky → `flaky: []` siempre.
+
+- **Undefined/ambiguous son `medium`, no `high`.** Un step sin definición no es un locator roto:
+  se resuelve con `/pw-ia:generate --bdd` (implementar el glue) o unificando expresiones, no con
+  el Healer — que podría inventar un `Then` con un expected propio.
+
 ## Formato de salida `CLASIF_<NOMBRE>.json`
 
 ```json
@@ -82,5 +101,6 @@ decidir a quién derivar.
 }
 ```
 
-Ejemplo completo: `examples/CLASIF_EJEMPLO.json` (generado desde
-`examples/playwright-results.sample.json`).
+Ejemplos completos: `examples/CLASIF_EJEMPLO.json` (desde
+`examples/playwright-results.sample.json`) y `examples/bdd/CLASIF_BDD_EJEMPLO.json` (desde
+`examples/bdd/cucumber-report.sample.json`).

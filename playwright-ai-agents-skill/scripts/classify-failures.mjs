@@ -2,12 +2,14 @@
 // classify-failures.mjs — Failure Classifier determinístico para resultados Playwright.
 // Generado por skill playwright-ai-agents · aiquaa.com
 //
-// Lee el reporter JSON de Playwright (results/playwright-results.json) y etiqueta cada test
-// fallido como PRODUCT_BUG | TEST_BUG | ENVIRONMENT | DATA | NETWORK | UNKNOWN.
+// Lee el reporter JSON de Playwright (results/playwright-results.json) o el formatter JSON de
+// cucumber-js (results/cucumber-report.json) — detecta el formato solo — y etiqueta cada test o
+// escenario fallido como PRODUCT_BUG | TEST_BUG | ENVIRONMENT | DATA | NETWORK | UNKNOWN.
 // Sin dependencias, sin LLM. Solo TEST_BUG con confianza "high" habilita el Healer.
 //
 // Uso:
 //   node scripts/classify-failures.mjs --input results/playwright-results.json --out CLASIF_PORTAL.json
+//   node scripts/classify-failures.mjs --input results/cucumber-report.json   --out CLASIF_BDD_PORTAL.json
 //
 // Exit code: 0 siempre que el input sea legible (el gate de CI es el step de tests, no este).
 //            2 si el input no existe o no es JSON válido.
@@ -23,6 +25,18 @@ export const CATEGORIES = ['PRODUCT_BUG', 'TEST_BUG', 'ENVIRONMENT', 'DATA', 'NE
 // No usar "waiting for getBy..." como señal: aparece en el call log de TODA aserción sobre
 // locator (incluido toHaveText con elemento presente) y clasificaría mal cambios de contenido.
 export const RULES = [
+  {
+    id: 'step-undefined-or-pending',
+    category: 'TEST_BUG',
+    confidence: 'medium',
+    pattern: /^(Undefined|Pending) step:/,
+  },
+  {
+    id: 'step-ambiguous',
+    category: 'TEST_BUG',
+    confidence: 'medium',
+    pattern: /^Ambiguous step:|Multiple step definitions match/,
+  },
   {
     id: 'network-error',
     category: 'NETWORK',
@@ -87,11 +101,11 @@ export const RULES = [
     id: 'test-timeout',
     category: 'UNKNOWN',
     confidence: 'medium',
-    pattern: /Test timeout of \d+ms exceeded/,
+    pattern: /Test timeout of \d+ms exceeded|function timed out, ensure the promise resolves within \d+ milliseconds/,
   },
 ];
 
-const ANSI = new RegExp(`${String.fromCharCode(27)}\[[0-9;]*m`, 'g');
+const ANSI = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
 
 export function classifyMessage(rawMessage) {
   const message = String(rawMessage ?? '').replace(ANSI, '');
@@ -118,8 +132,9 @@ function* walkSuites(suites, file) {
   }
 }
 
-export function classifyReport(report) {
-  const failures = [];
+// Playwright Test JSON reporter: { suites: [{ specs: [{ tests: [{ status, results }] }], suites }] }
+function collectPlaywright(report) {
+  const failed = [];
   const flaky = [];
   let total = 0;
 
@@ -136,10 +151,42 @@ export function classifyReport(report) {
       }
       if (test.status !== 'unexpected' || !last) continue;
 
-      const message = last.error?.message ?? last.errors?.[0]?.message ?? '';
-      failures.push({ ...entry, ...classifyMessage(message), error: firstLine(message) });
+      failed.push({ entry, message: last.error?.message ?? last.errors?.[0]?.message ?? '' });
     }
   }
+  return { total, failed, flaky };
+}
+
+// cucumber-js JSON formatter: [{ uri, elements: [{ type, name, steps: [{ keyword, name, result }] }] }]
+// Estados undefined/ambiguous/pending no traen mensaje útil: se sintetiza un prefijo estable
+// ("Undefined step:", ...) para que las reglas sigan siendo regex sobre texto.
+const CUCUMBER_STATUS_PREFIX = { undefined: 'Undefined step', ambiguous: 'Ambiguous step', pending: 'Pending step' };
+
+function collectCucumber(features) {
+  const failed = [];
+  let total = 0;
+
+  for (const feature of features) {
+    for (const scenario of feature.elements ?? []) {
+      if (scenario.type === 'background') continue;
+      total += 1;
+      const step = (scenario.steps ?? []).find((s) => s.result?.status && s.result.status !== 'passed' && s.result.status !== 'skipped');
+      if (!step) continue;
+
+      const stepText = `${step.keyword ?? ''}${step.name ?? ''}`.trim();
+      const prefix = CUCUMBER_STATUS_PREFIX[step.result.status];
+      const message = prefix
+        ? `${prefix}: ${stepText}\n${step.result.error_message ?? ''}`
+        : step.result.error_message ?? '';
+      failed.push({ entry: { file: feature.uri, title: scenario.name, project: 'cucumber', step: stepText }, message });
+    }
+  }
+  return { total, failed, flaky: [] };
+}
+
+export function classifyReport(report) {
+  const { total, failed, flaky } = Array.isArray(report) ? collectCucumber(report) : collectPlaywright(report);
+  const failures = failed.map(({ entry, message }) => ({ ...entry, ...classifyMessage(message), error: firstLine(message) }));
 
   const byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
   for (const f of failures) byCategory[f.category] += 1;
@@ -184,7 +231,7 @@ function main() {
   const { summary } = result;
   console.log(`tests=${summary.total} failed=${summary.failed} flaky=${summary.flaky} healer=${summary.healerCandidates}`);
   for (const f of result.failures) {
-    console.log(`${f.category.padEnd(11)} ${f.confidence.padEnd(6)} ${f.healerAllowed ? 'HEAL ' : 'HUMAN'} ${f.file} › ${f.title} [${f.project}]`);
+    console.log(`${f.category.padEnd(11)} ${f.confidence.padEnd(6)} ${f.healerAllowed ? 'HEAL ' : 'HUMAN'} ${f.file} › ${f.title} [${f.project}]${f.step ? ` › ${f.step}` : ''}`);
   }
   console.log(`→ ${outFile}`);
 }

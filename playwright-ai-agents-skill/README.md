@@ -28,6 +28,14 @@ Esta skill fija la arquitectura contraria:
 Complementa a [`playwright-skill`](../playwright-skill/README.md): esa genera specs, Page
 Objects, config y PDF; esta decide cuándo y con cuánto contexto interviene la IA.
 
+Soporta dos arquitecturas de ejecución, con el mismo Planner/Generator/Classifier/Healer:
+
+- **Playwright Test + POM** (default) — `T_*.spec.ts` sobre `pages/*Page.ts`.
+- **Cucumber + BDD + POM** — `F_*.feature` (negocio) → `S_*.steps.ts` (glue, 1 línea por step)
+  → `pages/*Page.ts` (mismo Page Object que la variante anterior). Ver
+  [`references/bdd-pom-architecture.md`](./references/bdd-pom-architecture.md) y
+  [`examples/bdd/`](./examples/bdd/).
+
 ---
 
 ## ¿Qué incluye?
@@ -48,6 +56,8 @@ Objects, config y PDF; esta decide cuándo y con cuánto contexto interviene la 
 | `examples/playwright-results.sample.json` → `CLASIF_EJEMPLO.json` | Entrada y salida del classifier |
 | `examples/.env.ai.example` | Presupuesto de agentes |
 | `examples/Y_EXAMPLE_playwright_ai.yml` | Azure Pipelines: impact analysis + tests + classifier, 0 IA |
+| `references/bdd-pom-architecture.md` | Arquitectura Cucumber + BDD + POM: capas, permisos del Healer, anti-patrones |
+| `examples/bdd/` | `F_*.feature`, `S_*.steps.ts`, `world.ts`/`hooks.ts`, `cucumber.js`, `cucumber-report.sample.json` → `CLASIF_BDD_EJEMPLO.json` |
 
 ---
 
@@ -77,7 +87,9 @@ npx skills add aiquaa-labs/course-pr-skill
 
 ```
 /pw-ia:plan       → requisito → PLAN_<FEATURE>.md (sin código)
+/pw-ia:plan --bdd → ídem, escenarios en F_<DOMINIO>.feature
 /pw-ia:generate   → PLAN_*.md → T_*.spec.ts vía playwright-skill, contexto mínimo
+/pw-ia:generate --bdd → steps "undefined" del .feature → S_*.steps.ts + métodos PO
 /pw-ia:classify   → results/playwright-results.json → CLASIF_<NOMBRE>.json (sin IA)
 /pw-ia:heal       → Healer sobre candidatos, con presupuesto → HEAL_<TEST>.md
 /pw-ia:budget     → valores AI_MAX_* activos y consumo de la sesión
@@ -112,6 +124,8 @@ PRODUCT_BUG medium HUMAN tests/transferencias/T_TRANSFERENCIA_EXITOSA.spec.ts �
 | Clasificación de fallos | `CLASIF_NOMBRE.json` | `CLASIF_PORTAL.json` |
 | Propuesta del Healer | `HEAL_TEST.md` | `HEAL_TRF_01.md` |
 | Pipeline CI | `Y_NOMBRE_playwright_ai.yml` | `Y_PORTAL_playwright_ai.yml` |
+| Feature Gherkin (BDD) | `F_DOMINIO.feature` | `F_TRANSFERENCIAS.feature` |
+| Steps de negocio (BDD) | `S_dominio.steps.ts` | `S_transferencias.steps.ts` |
 
 ---
 
@@ -133,6 +147,13 @@ results/
   heal/HEAL_TRF_01.md
 .env.ai                                      ← presupuesto (gitignored)
 playwright.config.ts
+
+# Variante Cucumber + BDD + POM (alternativa a tests/, mismo pages/):
+features/transferencias/F_TRANSFERENCIAS.feature
+steps/S_transferencias.steps.ts
+support/world.ts
+support/hooks.ts
+cucumber.js
 ```
 
 ---

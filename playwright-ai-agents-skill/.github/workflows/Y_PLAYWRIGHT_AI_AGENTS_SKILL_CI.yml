@@ -32,6 +32,14 @@ jobs:
           test -f references/metrics.md
           test -f examples/HEALER_PROMPT.md
           test -f examples/PLAN_TRANSFERENCIAS.md
+          test -f references/bdd-pom-architecture.md
+          test -f examples/bdd/F_TRANSFERENCIAS.feature
+          test -f examples/bdd/steps/S_transferencias.steps.ts
+          test -f examples/bdd/support/world.ts
+          test -f examples/bdd/support/hooks.ts
+          test -f examples/bdd/cucumber.js
+          test -f examples/bdd/cucumber-report.sample.json
+          test -f examples/bdd/CLASIF_BDD_EJEMPLO.json
           echo "archivos OK"
 
       - name: Classifier — salida estable contra CLASIF_EJEMPLO.json
@@ -44,6 +52,18 @@ jobs:
             const b = require('./examples/CLASIF_EJEMPLO.json');
             if (JSON.stringify(a) !== JSON.stringify(b)) { console.error('CLASIF difiere'); process.exit(1); }
             console.log('classifier OK');
+          "
+
+      - name: Classifier BDD — salida estable contra CLASIF_BDD_EJEMPLO.json
+        run: |
+          node scripts/classify-failures.mjs \
+            --input examples/bdd/cucumber-report.sample.json \
+            --out   /tmp/CLASIF_BDD_CI.json
+          node -e "
+            const a = require('/tmp/CLASIF_BDD_CI.json');
+            const b = require('./examples/bdd/CLASIF_BDD_EJEMPLO.json');
+            if (JSON.stringify(a) !== JSON.stringify(b)) { console.error('CLASIF BDD difiere'); process.exit(1); }
+            console.log('classifier BDD OK');
           "
 
       - name: Taxonomía sincronizada con RULES
@@ -59,14 +79,38 @@ jobs:
 
       - name: Validar TypeScript de ejemplos
         run: |
-          npm install --no-save typescript @playwright/test @types/node --silent
+          npm install --no-save typescript @playwright/test @types/node @cucumber/cucumber --silent
           npx tsc --noEmit --strict --module esnext --moduleResolution bundler --target es2022 --skipLibCheck --types node \
             examples/seed.spec.ts \
             examples/T_TRANSFERENCIA_EXITOSA.spec.ts \
             examples/pages/TransfersPage.ts \
+            examples/bdd/support/world.ts \
+            examples/bdd/support/hooks.ts \
+            examples/bdd/steps/S_transferencias.steps.ts \
             && echo "TS OK"
 
       - name: Validar pipeline YML
         run: |
           python3 -c "import yaml; yaml.safe_load(open('examples/Y_EXAMPLE_playwright_ai.yml'))" \
             && echo "Y_ OK"
+
+      - name: Validar cucumber.js y parseo del feature de ejemplo
+        run: |
+          node -e "
+            const profiles = require('./examples/bdd/cucumber.js');
+            for (const name of ['default', 'smoke', 'pr', 'dryrun']) {
+              if (!profiles[name]) { console.error('falta perfil', name); process.exit(1); }
+            }
+            console.log('cucumber.js OK');
+          "
+          npm install --no-save @cucumber/gherkin @cucumber/messages --silent
+          node -e "
+            const fs = require('node:fs');
+            const { Parser, AstBuilder, GherkinClassicTokenMatcher } = require('@cucumber/gherkin');
+            const { IdGenerator } = require('@cucumber/messages');
+            const parser = new Parser(new AstBuilder(IdGenerator.uuid()), new GherkinClassicTokenMatcher());
+            const src = fs.readFileSync('examples/bdd/F_TRANSFERENCIAS.feature', 'utf8');
+            const doc = parser.parse(src);
+            if (!doc.feature || doc.feature.children.length < 1) { console.error('feature vacío'); process.exit(1); }
+            console.log('F_TRANSFERENCIAS.feature parsea OK —', doc.feature.children.length, 'children');
+          "
