@@ -102,6 +102,7 @@ tabla de confianza más abajo) — nunca como clasificador primario.
 | `**/*.Designer.cs`, `**/*.xaml`, `.csproj` con `<UseWindowsForms>true` o `<UseWPF>true` | "escritorio", "WinForms", "WPF", "FlaUI" | `flaui-skill` | 15 / 8 |
 | `migrations/**/*.sql`, `**/{views,procedures,functions,triggers}/*.sql`, `rules/*.md` (formato database-object-testing) | "vista", "procedimiento almacenado", "función SQL", "trigger", "objeto de base de datos", "comparar base vs candidata" | `database-object-testing-skill` | 15 / 8 |
 | Referencia `x-api-key`/`aiquaa-sandbox-api`/`qa_training`/"grupo N" | ídem | `sandbox-skill` — contexto, no puntuada | n/a |
+| — (nunca por ruta) | "diagramá", "diagrama", "mapa de arquitectura", "visualizá el flujo", "gráfico de la suite" — **pedido explícito del usuario** | `archify-skill` — soporte visual, no puntuada. Usar `archify-offline` si el entorno no tiene salida a internet | n/a |
 | — (siempre, al final del pipeline) | — | `course-pr-skill` — paso fijo, no puntuado | n/a |
 
 **Desempate hurl vs postman-newman:** si ninguna extensión aparece en el diff (ambas quedan

@@ -28,6 +28,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `qa-orchestrator-skill` | — | Ruteo — decide qué skill(s) usar desde un PR y/o historia, orquesta y consolida resultados | [→](./qa-orchestrator-skill/README.md) |
 | `qa-productivity-skill` | Azure CLI (`az boards`/`repos`/`pipelines`/`devops invoke`) | Métricas — productividad y calidad real de automatización (API/Web) desde Azure DevOps | [→](./qa-productivity-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
+| `archify-skill` | Archify (motor vendorizado, Node ≥18) | Soporte visual — diagramas interactivos de arquitectura, workflow, secuencia, flujo de datos y ciclo de vida. Dos variantes: `archify` y `archify-offline` (cero red) | [→](./archify-skill/README.md) |
 
 ---
 
@@ -49,6 +50,8 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Necesitás medir productividad/calidad real de automatización (no solo
 cantidad) en Azure DevOps?                                               →  qa-productivity-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
+¿Necesitás diagramar la arquitectura, el pipeline o el flujo bajo prueba? →  archify-skill
+¿Ese diagrama va a una red sin internet (banca, auditoría, air-gapped)?  →  archify-skill (archify-offline)
 ```
 
 Todas son complementarias — se usan juntas en el mismo proyecto. `sandbox-skill` es la base
