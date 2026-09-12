@@ -20,6 +20,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `postman-newman-skill` | Postman + Newman | Funcional — GUI-first, colecciones JSON | [→](./postman-newman-skill/README.md) |
 | `hurl-skill` | Hurl | Funcional — declarativo, diff-friendly, CI-native | [→](./hurl-skill/README.md) |
 | `playwright-skill` | Playwright | E2E navegador + API — TypeScript, Page Objects | [→](./playwright-skill/README.md) |
+| `playwright-ai-agents-skill` | Playwright + Node (classifier sin deps) | Gobierno IA — Planner/Generator/Healer con presupuesto, Failure Classifier determinístico, 0 IA en CI | [→](./playwright-ai-agents-skill/README.md) |
 | `jmeter-skill` | Apache JMeter | Rendimiento dinámico — carga, estrés, pico, resistencia, escalabilidad | [→](./jmeter-skill/README.md) |
 | `flaui-skill` | FlaUI + Reqnroll + NUnit | Funcional — escritorio C# (WinForms/WPF), BDD + trazabilidad | [→](./flaui-skill/README.md) |
 | `database-object-testing-skill` | Node.js + API REST | Objetos de BD — funcional, diferencias y costo | [→](./database-object-testing-skill/README.md) |
@@ -40,6 +41,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Explorás la API con GUI y ya tenés colecciones Postman?                 →  postman-newman-skill
 ¿Querés tests en texto plano que se revisen en PRs?                      →  hurl-skill
 ¿Necesitás automatizar flujos en el navegador o E2E?                     →  playwright-skill
+¿Querés generar/reparar tests Playwright con IA sin disparar el consumo?  →  playwright-ai-agents-skill
 ¿Necesitás saber cuántos usuarios concurrentes aguanta el API?           →  jmeter-skill
 ¿Automatizás pantallas de escritorio C# (WinForms/WPF)?                  →  flaui-skill
 ¿Necesitás probar objetos de BD sin conexión directa al motor?           →  database-object-testing-skill
@@ -258,6 +260,44 @@ npx playwright install --with-deps chromium
 `T_NOMBRE.spec.ts` · `pages/NombrePage.ts` · `playwright.config.ts` · `Y_NOMBRE_playwright.yml` · `INFORME_E2E_NOMBRE.pdf`
 
 → [Documentación completa](./playwright-skill/README.md)
+
+---
+
+## playwright-ai-agents-skill
+
+**Herramienta:** Playwright Test + `scripts/classify-failures.mjs` (Node ≥18, sin dependencias)
+**Principio:** IA para generar, analizar y reparar — Playwright Test para ejecutar
+
+Capa de gobierno de agentes de IA sobre `playwright-skill`. Planner (historia →
+`PLAN_*.md`), Generator (plan → `T_*.spec.ts` con contexto mínimo, vía `playwright-skill`),
+Failure Classifier por reglas (`PRODUCT_BUG`/`TEST_BUG`/`ENVIRONMENT`/`DATA`/`NETWORK`/`UNKNOWN`)
+y Healer bajo demanda: solo `TEST_BUG` de alta confianza, máximo 2 intentos, prohibido tocar
+expected de negocio, entrega por PR con revisión humana. Pipeline con Test Impact Analysis y
+cero llamadas a modelos en CI.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/playwright-ai-agents-skill
+```
+
+### Comandos
+
+| Comando | Acción |
+|---------|--------|
+| `/pw-ia:plan` | Requisito → `PLAN_<FEATURE>.md` (escenarios, riesgos, datos, expected, contrato testid) |
+| `/pw-ia:generate` | Plan → `T_*.spec.ts` vía `playwright-skill`, contexto mínimo suficiente |
+| `/pw-ia:classify` | `playwright-results.json` → `CLASIF_*.json` sin IA |
+| `/pw-ia:heal` | Healer con presupuesto y blacklist → `HEAL_<TEST>.md` |
+| `/pw-ia:budget` | Presupuesto `AI_MAX_*` activo y consumo |
+| `/pw-ia:impact` | `git diff` → tags afectados → `--grep` |
+| `/pw-ia:pipeline` | `Y_NOMBRE_playwright_ai.yml` con TIA + classifier |
+
+### Salidas
+
+`PLAN_FEATURE.md` · `CLASIF_NOMBRE.json` · `HEAL_TEST.md` · `Y_NOMBRE_playwright_ai.yml`
+
+→ [Documentación completa](./playwright-ai-agents-skill/README.md)
 
 ---
 
@@ -633,6 +673,7 @@ npx skills add aiquaa-labs/bdd-skill
 npx skills add aiquaa-labs/postman-newman-skill
 npx skills add aiquaa-labs/hurl-skill
 npx skills add aiquaa-labs/playwright-skill
+npx skills add aiquaa-labs/playwright-ai-agents-skill
 npx skills add aiquaa-labs/jmeter-skill
 npx skills add aiquaa-labs/flaui-skill
 npx skills add aiquaa-labs/database-object-testing-skill
@@ -656,6 +697,9 @@ Todas las skills usan el mismo sistema de prefijos:
 | `H_` | Test file Hurl `.hurl` | hurl |
 | `V_` | Variables Hurl `.env` / perfiles JMeter `.properties` | hurl, jmeter |
 | `T_` | Test spec Playwright `.spec.ts` | playwright |
+| `PLAN_` | Plan del Planner IA `.md` (intención funcional) | playwright-ai-agents |
+| `CLASIF_` | Clasificación determinística de fallos `.json` | playwright-ai-agents |
+| `HEAL_` | Propuesta del Healer IA `.md` | playwright-ai-agents |
 | `F_` | Feature Gherkin `.feature` | bdd, ocr-bdd, flaui |
 | `S_` | Step definitions (`.steps.ts` en bdd, `_Steps.cs` en flaui) | bdd, flaui |
 | `P_` | Plan de prueba JMeter `.jmx` | jmeter |
@@ -709,6 +753,7 @@ aiquaa-labs/
 ├── postman-newman-skill/           → Postman + Newman — pruebas funcionales GUI
 ├── hurl-skill/                     → Hurl — pruebas funcionales declarativas
 ├── playwright-skill/               → Playwright — E2E navegador + API TypeScript
+├── playwright-ai-agents-skill/     → gobierno IA sobre Playwright — planner/generator/healer con presupuesto
 ├── jmeter-skill/                   → JMeter — rendimiento dinámico, perfiles PtU CPTJM
 ├── flaui-skill/                    → FlaUI + Reqnroll + NUnit — escritorio C# (WinForms/WPF)
 ├── database-object-testing-skill/  → Node.js + API REST — objetos de BD relacional
