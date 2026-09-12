@@ -1,0 +1,15 @@
+# Runtime Archify vendorizado — determinismo de bytes.
+#
+# `deliver` reporta SHA-256 del artefacto. Si el template o los renderers se
+# hicieran checkout con CRLF en Windows y con LF en CI, la misma especificación
+# produciría hashes distintos. Forzamos LF en todo el paquete para que el recibo
+# sea reproducible en cualquier plataforma.
+* text eol=lf
+
+# Salidas de build deterministas, commiteadas para instalación cero.
+renderers/shared/generated-brand-marks.mjs linguist-generated=true
+renderers/shared/generated-validators.mjs linguist-generated=true
+
+# Templates del viewer — grandes y generados, fuera de las estadísticas de lenguaje.
+assets/template.html linguist-generated=true
+assets/template.offline.html linguist-generated=true
