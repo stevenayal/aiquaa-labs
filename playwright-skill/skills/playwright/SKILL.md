@@ -1004,4 +1004,6 @@ NO inventa selectores sin fuente — aplica el protocolo de reconocimiento y dec
 NO inventa credenciales ni URLs de API — las pone como variables de entorno.
 NO accede directamente a BD — siempre a través de la API interna del usuario.
 Ante selector frágil → recomendar `data-testid` y `npx playwright codegen`.
+Healing con IA gobernado (classifier de fallos, presupuesto de intentos, blacklist de expected
+de negocio) o planificación/generación masiva con agentes → `playwright-ai-agents-skill`.
 "stop playwright" o "normal mode": volver a estilo verbose.

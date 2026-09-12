@@ -58,6 +58,18 @@ input de la historia para el resto del pipeline.
 | `pages/*Page.ts`, `playwright.config.ts` | 15 | "flujo de usuario", "pantalla web", "checkout" | 6 |
 | Diff agrega/cambia atributos `data-testid` | 12 | — | — |
 
+### `playwright-ai-agents-skill` — complementa a `playwright-skill`, no compite por capa
+
+| Señal (ruta/extensión) | Peso | Señal (keyword) | Peso |
+|---|---|---|---|
+| `specs/**/PLAN_*.md`, `**/HEAL_*.md`, `**/CLASIF_*.json` | 15 | "healer", "self-healing", "reparar tests con IA" | 8 |
+| `scripts/classify-failures.mjs`, `.env.ai*` | 15 | "planner IA", "clasificar fallos playwright", "presupuesto IA" | 8 |
+| — | — | "playwright mcp", "test agents", "consumo de tokens en automatización" | 6 |
+
+Se selecciona **junto con** `playwright-skill` (que sigue generando specs/config): esta
+aporta plan, clasificación y healing gobernado. Si solo dispara por keyword y no hay frontend
+real, aplica el mismo prerrequisito que `playwright-skill`.
+
 ### `jmeter-skill`
 
 | Señal (ruta/extensión) | Peso | Señal (keyword) | Peso |
