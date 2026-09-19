@@ -25,7 +25,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    HRFlowable, KeepTogether, PageBreak, Paragraph,
+    HRFlowable, Image, KeepTogether, PageBreak, Paragraph,
     SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
@@ -49,6 +49,7 @@ PAGE_W, PAGE_H = A4
 MARGIN   = 18 * mm
 HEADER_H = 16 * mm
 FOOTER_H = 14 * mm
+ANSI_ESCAPE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
 # ─── Estilos ──────────────────────────────────────────────────────────────────
@@ -154,47 +155,71 @@ def parse_results(path: str) -> dict:
     total = passed = failed = skipped = duration_ms = 0
     suites_detail = []
     all_failures   = []
+    evidences      = []
 
-    for suite in data.get("suites", []):
-        suite_name   = suite.get("title", "Sin nombre")
-        s_pass = s_fail = s_skip = 0
+    def visit_suites(suites):
+        nonlocal total, passed, failed, skipped, duration_ms
 
-        for spec in suite.get("specs", []):
-            for result in spec.get("tests", [spec]):
-                status = result.get("status", result.get("outcome", "unknown"))
-                dur    = result.get("duration", 0)
-                duration_ms += dur
-                total += 1
+        for suite in suites:
+            visit_suites(suite.get("suites", []))
+            if not suite.get("specs"):
+                continue
 
-                if status in ("passed", "expected"):
-                    passed += 1
-                    s_pass += 1
-                elif status in ("failed", "unexpected"):
-                    failed += 1
-                    s_fail += 1
-                    error_msg = ""
-                    for attempt in result.get("results", []):
-                        for err in attempt.get("errors", []):
-                            error_msg = err.get("message", "")[:300]
-                            break
-                    all_failures.append({
-                        "suite": suite_name,
-                        "title": result.get("title", spec.get("title", "?")),
-                        "file":  spec.get("file", ""),
-                        "line":  spec.get("line", ""),
-                        "error": error_msg,
-                    })
-                elif status in ("skipped", "pending"):
-                    skipped += 1
-                    s_skip += 1
+            suite_name   = suite.get("title", "Sin nombre")
+            s_pass = s_fail = s_skip = 0
 
-        suites_detail.append({
-            "name":    suite_name,
-            "passed":  s_pass,
-            "failed":  s_fail,
-            "skipped": s_skip,
-            "total":   s_pass + s_fail + s_skip,
-        })
+            for spec in suite.get("specs", []):
+                for result in spec.get("tests", [spec]):
+                    status = result.get("status", result.get("outcome", "unknown"))
+                    attempts = result.get("results", [])
+                    duration_ms += result.get("duration", sum(a.get("duration", 0) for a in attempts))
+                    total += 1
+
+                    if status in ("passed", "expected"):
+                        passed += 1
+                        s_pass += 1
+                        screenshots = [
+                            attachment.get("path")
+                            for attempt in attempts
+                            for attachment in attempt.get("attachments", [])
+                            if attachment.get("contentType") == "image/png"
+                            and attachment.get("path")
+                            and os.path.exists(attachment["path"])
+                        ]
+                        if screenshots:
+                            evidences.append({
+                                "suite": suite_name,
+                                "title": result.get("title", spec.get("title", "?")),
+                                "path": screenshots[-1],
+                            })
+                    elif status in ("failed", "unexpected"):
+                        failed += 1
+                        s_fail += 1
+                        error_msg = ""
+                        for attempt in attempts:
+                            for err in attempt.get("errors", []):
+                                error_msg = ANSI_ESCAPE.sub("", err.get("message", ""))[:300]
+                                break
+                        all_failures.append({
+                            "suite": suite_name,
+                            "title": result.get("title", spec.get("title", "?")),
+                            "file":  spec.get("file", ""),
+                            "line":  spec.get("line", ""),
+                            "error": error_msg,
+                        })
+                    elif status in ("skipped", "pending"):
+                        skipped += 1
+                        s_skip += 1
+
+            suites_detail.append({
+                "name":    suite_name,
+                "passed":  s_pass,
+                "failed":  s_fail,
+                "skipped": s_skip,
+                "total":   s_pass + s_fail + s_skip,
+            })
+
+    visit_suites(data.get("suites", []))
 
     pass_rate = round(passed / total * 100, 1) if total > 0 else 0
 
@@ -208,6 +233,7 @@ def parse_results(path: str) -> dict:
         "duration_s":   round(duration_ms / 1000, 1),
         "suites":       suites_detail,
         "failures":     all_failures,
+        "evidences":    evidences,
         "timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -452,6 +478,31 @@ def build_failures(stats, styles):
     return story
 
 
+# ─── Evidencias de casos exitosos ────────────────────────────────────────────
+def build_evidences(stats, styles):
+    if not stats["evidences"]:
+        return []
+
+    story = [PageBreak(), Paragraph("Evidencias de Casos Exitosos", styles["section"])]
+    story.append(Paragraph(
+        "Capturas obtenidas al finalizar cada prueba aprobada.", styles["body"]
+    ))
+    story.append(Spacer(1, 4 * mm))
+    w_content = PAGE_W - 2 * MARGIN
+
+    for index, evidence in enumerate(stats["evidences"], 1):
+        story.append(Paragraph(f'{index}. {evidence["title"]}', styles["subsection"]))
+        story.append(Paragraph(f'Suite: {evidence["suite"]}', styles["body"]))
+        screenshot = Image(evidence["path"])
+        screenshot._restrictSize(w_content, 120 * mm)
+        story.append(Spacer(1, 2 * mm))
+        story.append(screenshot)
+        if index < len(stats["evidences"]):
+            story.append(PageBreak())
+
+    return story
+
+
 # ─── Entry point ──────────────────────────────────────────────────────────────
 def generate_report(results_path, output_path, app_name="App",
                     environment=None, app_version=None,
@@ -473,6 +524,7 @@ def generate_report(results_path, output_path, app_name="App",
                          app_version=app_version, repo_url=repo_url, author=author)
     story += build_suite_summary(stats, styles)
     story += build_failures(stats, styles)
+    story += build_evidences(stats, styles)
 
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
