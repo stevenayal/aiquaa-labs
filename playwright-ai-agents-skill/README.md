@@ -85,6 +85,20 @@ npx skills add aiquaa-labs/course-pr-skill
 
 ## Uso rápido
 
+### Base ejecutable BDD + Playwright
+
+La base autocontenida está en [`examples/bdd/starter`](./examples/bdd/starter/README.md).
+Incluye aplicación local, Gherkin, steps de negocio, Page Object, reportes y lockfile:
+
+```bash
+cd examples/bdd/starter
+npm ci
+npm run browsers:install
+npm run check
+```
+
+Los ejemplos de transferencias permanecen como plantillas para una aplicación bancaria real.
+
 ```
 /pw-ia:plan       → requisito → PLAN_<FEATURE>.md (sin código)
 /pw-ia:plan --bdd → ídem, escenarios en F_<DOMINIO>.feature
