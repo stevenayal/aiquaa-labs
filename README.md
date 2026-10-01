@@ -29,6 +29,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `qa-orchestrator-skill` | — | Ruteo — decide qué skill(s) usar desde un PR y/o historia, orquesta y consolida resultados | [→](./qa-orchestrator-skill/README.md) |
 | `qa-productivity-skill` | Azure CLI (`az boards`/`repos`/`pipelines`/`devops invoke`) | Métricas — productividad y calidad real de automatización (API/Web) desde Azure DevOps | [→](./qa-productivity-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
+| `tgrep-skill` | tgrep (opcional, fallback `rg`) | Búsqueda de código indexada por trigramas — rápida en repos grandes, compatible con ripgrep | [→](./tgrep-skill/README.md) |
 | `archify-skill` | Archify (motor vendorizado, Node ≥18) | Soporte visual — diagramas interactivos de arquitectura, workflow, secuencia, flujo de datos y ciclo de vida. Dos variantes: `archify` y `archify-offline` (cero red) | [→](./archify-skill/README.md) |
 
 ---
@@ -52,6 +53,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 ¿Necesitás medir productividad/calidad real de automatización (no solo
 cantidad) en Azure DevOps?                                               →  qa-productivity-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
+¿Buscás código en un repo grande y grep/rg tarda demasiado?               →  tgrep-skill
 ¿Necesitás diagramar la arquitectura, el pipeline o el flujo bajo prueba? →  archify-skill
 ¿Ese diagrama va a una red sin internet (banca, auditoría, air-gapped)?  →  archify-skill (archify-offline)
 ```
@@ -665,6 +667,24 @@ npx skills add aiquaa-labs/token-optimization-skill
 
 ---
 
+## tgrep-skill
+
+Búsqueda de código con [tgrep](https://github.com/stevenayal/tgrep) — grep con índice de
+trigramas y servidor opcional, compatible con los flags de ripgrep. Fija cuándo indexar
+(`tgrep index`), cuándo servir (`tgrep serve`), cómo buscar sin errores de parseo (`--` antes
+del patrón, `-F` para literales), cómo leer la frescura del índice y qué flags lo saltean.
+No instala el binario; si no está, sigue con `rg`.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/tgrep-skill
+```
+
+→ [Documentación completa](./tgrep-skill/README.md)
+
+---
+
 ## Instalación completa del stack
 
 ```bash
@@ -682,6 +702,7 @@ npx skills add aiquaa-labs/course-pr-skill
 npx skills add aiquaa-labs/qa-orchestrator-skill
 npx skills add aiquaa-labs/qa-productivity-skill
 npx skills add aiquaa-labs/token-optimization-skill
+npx skills add aiquaa-labs/tgrep-skill
 ```
 
 ---
@@ -762,6 +783,7 @@ aiquaa-labs/
 ├── qa-orchestrator-skill/          → ruteo — decide y orquesta qué skill(s) usar desde un PR/historia
 ├── qa-productivity-skill/          → métricas de productividad/calidad real de automatización desde Azure DevOps
 ├── token-optimization-skill/       → criterio de herramienta y compresión — ahorro de tokens
+├── tgrep-skill/                    → búsqueda de código indexada por trigramas (tgrep)
 └── README.md                       → este archivo
 ```
 
