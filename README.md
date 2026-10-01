@@ -30,6 +30,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 | `qa-productivity-skill` | Azure CLI (`az boards`/`repos`/`pipelines`/`devops invoke`) | Métricas — productividad y calidad real de automatización (API/Web) desde Azure DevOps | [→](./qa-productivity-skill/README.md) |
 | `token-optimization-skill` | codegraph / engram / caveman (opcionales) | Criterio de herramienta y compresión — reduce consumo de tokens en sesiones largas | [→](./token-optimization-skill/README.md) |
 | `tgrep-skill` | tgrep (opcional, fallback `rg`) | Búsqueda de código indexada por trigramas — rápida en repos grandes, compatible con ripgrep | [→](./tgrep-skill/README.md) |
+| `engram-skill` | engram (MCP, opcional) | Memoria persistente entre sesiones — qué guardar, cuándo buscar, resumen de cierre y recuperación tras compactación | [→](./engram-skill/README.md) |
 | `archify-skill` | Archify (motor vendorizado, Node ≥18) | Soporte visual — diagramas interactivos de arquitectura, workflow, secuencia, flujo de datos y ciclo de vida. Dos variantes: `archify` y `archify-offline` (cero red) | [→](./archify-skill/README.md) |
 
 ---
@@ -54,6 +55,7 @@ automatización de pruebas de aiquaa** (8 semanas, arranca a usar estas skills d
 cantidad) en Azure DevOps?                                               →  qa-productivity-skill
 ¿La sesión se está quedando sin contexto o querés gastar menos tokens?    →  token-optimization-skill
 ¿Buscás código en un repo grande y grep/rg tarda demasiado?               →  tgrep-skill
+¿Querés que el agente recuerde decisiones entre sesiones/semanas?         →  engram-skill
 ¿Necesitás diagramar la arquitectura, el pipeline o el flujo bajo prueba? →  archify-skill
 ¿Ese diagrama va a una red sin internet (banca, auditoría, air-gapped)?  →  archify-skill (archify-offline)
 ```
@@ -685,6 +687,26 @@ npx skills add aiquaa-labs/tgrep-skill
 
 ---
 
+## engram-skill
+
+Memoria persistente entre sesiones con [engram](https://github.com/stevenayal/engram) —
+SQLite + FTS5 expuesto como servidor MCP (`mem_*`). Define el protocolo completo: qué guardar
+y cuándo (`mem_save` con What/Why/Where/Learned y `topic_key`), cómo recuperar contexto antes
+de re-explorar (`mem_context` → `mem_search`), cómo cerrar sesión y sobrevivir a la
+compactación (`mem_session_summary`), cómo escribir en el proyecto correcto y cómo resolver
+conflictos entre memorias. Nunca guarda secretos ni instala el MCP; sin engram, sigue sin
+memoria.
+
+### Instalación
+
+```bash
+npx skills add aiquaa-labs/engram-skill
+```
+
+→ [Documentación completa](./engram-skill/README.md)
+
+---
+
 ## Instalación completa del stack
 
 ```bash
@@ -703,6 +725,7 @@ npx skills add aiquaa-labs/qa-orchestrator-skill
 npx skills add aiquaa-labs/qa-productivity-skill
 npx skills add aiquaa-labs/token-optimization-skill
 npx skills add aiquaa-labs/tgrep-skill
+npx skills add aiquaa-labs/engram-skill
 ```
 
 ---
@@ -784,6 +807,7 @@ aiquaa-labs/
 ├── qa-productivity-skill/          → métricas de productividad/calidad real de automatización desde Azure DevOps
 ├── token-optimization-skill/       → criterio de herramienta y compresión — ahorro de tokens
 ├── tgrep-skill/                    → búsqueda de código indexada por trigramas (tgrep)
+├── engram-skill/                   → memoria persistente entre sesiones (engram MCP)
 └── README.md                       → este archivo
 ```
 
